@@ -2,9 +2,10 @@
   "name": "youtube-backend",
   "version": "1.0.0",
   "description": "this is youtube backend ",
-  "main": "index.js",
+  "main": "server.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/server.js"
   },
   "keywords": [
     "javascript",
@@ -14,5 +15,14 @@
     "mongodb"
   ],
   "author": "Md Nazim Hossain",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
 }
