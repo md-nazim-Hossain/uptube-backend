@@ -11,4 +11,9 @@ app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
 app.use(cors({ origin: config.cors_origin, credentials: true }));
 app.use(cookieParser());
 
+//routes import ;
+import userRoutes from "./routes/user.routes.js";
+
+// routes declaration
+app.use("/api/v1/users", userRoutes);
 export { app };
