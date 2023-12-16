@@ -15,7 +15,7 @@ export const config = {
     refresh_token_expiry: process.env.JWT_ACCESS_TOKEN_EXPIRY || "365d",
   },
   bcrypt: {
-    salt: process.env.BCRYPT_SALT || 10,
+    salt: +process.env.BCRYPT_SALT || 10,
   },
   cloudinary: {
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
