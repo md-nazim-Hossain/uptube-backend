@@ -1,10 +1,9 @@
 import { config } from "../config/index.js";
 import { User } from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
-import { catchAsync } from "../utils/catchAsync.js";
 import StatusCode from "http-status-codes";
 
-export const verifyJWT = async (req, res, next) => {
+export const verifyJWT = async (req, _, next) => {
   try {
     const token = req.cookies?.accessToken || req.headers?.Authorization?.split(" ")[1];
     if (!token) {
