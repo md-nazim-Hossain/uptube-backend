@@ -15,4 +15,5 @@ router.route("/login").post(userController.loginUser);
 
 // Protect all routes after this middleware
 router.route("/logout").post(verifyJWT, userController.logoutUser);
+router.route("/refresh-token").post(userController.refreshAccessToken);
 export default router;

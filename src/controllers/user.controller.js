@@ -4,6 +4,8 @@ import StatusCode from "http-status-codes";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { User } from "../models/user.model.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
+import { config } from "../config/index.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -22,17 +24,6 @@ const generateAccessAndRefreshToken = async (userId) => {
 };
 
 const registerUser = catchAsync(async (req, res) => {
-  // get user details from frontend
-  // validation
-  // check if user exists: email, username
-  // check for images,check for avatar
-  // upload images to cloudinary
-  // create user object
-  // save user to database
-  // remove password and refreshToken from user object response;
-  // check for user creation
-  // send response
-
   const { username, email, password, fullName } = req.body;
   if (!username || !email || !password || !fullName) {
     throw new ApiError(StatusCode.BAD_REQUEST, "All fields are required");
@@ -85,15 +76,8 @@ const registerUser = catchAsync(async (req, res) => {
 });
 
 const loginUser = catchAsync(async (req, res) => {
-  // get user email and password data from frontend
-  // validation is email and password
-  // check if user exists
-  // check for password
-  // create access token and refresh token
-  // send cookies
-  // send response
   const { email, password, username } = req.body;
-  if (!username || !email) {
+  if (!(username || email)) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Username or email is required");
   } else if (!password) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Password are required");
@@ -127,10 +111,6 @@ const loginUser = catchAsync(async (req, res) => {
 });
 
 const logoutUser = catchAsync(async (req, res) => {
-  // get access token
-  // check if token is valid
-  // delete access token
-  // send response
   await User.findOneAndUpdate(
     req.user._id,
     {
@@ -149,11 +129,43 @@ const logoutUser = catchAsync(async (req, res) => {
   return res.status(StatusCode.OK).clearCookie("accessToken", options).clearCookie("refreshToken", options).json({
     success: true,
     message: "User logged out successfully",
+    data: null,
   });
+});
+
+const refreshAccessToken = catchAsync(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies?.refreshToken || req.headers?.Authorization?.split(" ")[1] || req.body?.refreshToken;
+  if (!incomingRefreshToken) {
+    throw new ApiError(StatusCode.UNAUTHORIZED, "Unauthorized request");
+  }
+  const verifyRefreshToken = jwt.verify(incomingRefreshToken, config.jwt.refresh_token_secret);
+  if (!verifyRefreshToken || !verifyRefreshToken._id) {
+    throw new ApiError(StatusCode.UNAUTHORIZED, "Invalid refresh token");
+  }
+  const user = await User.findById(verifyRefreshToken._id);
+  if (!user) {
+    throw new ApiError(StatusCode.UNAUTHORIZED, "Invalid refresh token");
+  }
+
+  if (incomingRefreshToken !== user.refreshToken) {
+    throw new ApiError(StatusCode.UNAUTHORIZED, "Refresh token is not valid or expired");
+  }
+  const options = { httpOnly: true, secure: true };
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
+  return res
+    .status(StatusCode.OK)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json({
+      success: true,
+      message: "Access token refreshed successfully",
+    });
 });
 
 export const userController = {
   registerUser,
   loginUser,
   logoutUser,
+  refreshAccessToken,
 };
