@@ -163,9 +163,134 @@ const refreshAccessToken = catchAsync(async (req, res) => {
     });
 });
 
+const changeCurrentPassword = catchAsync(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+  if (!(await user.isPasswordCorrect(currentPassword))) {
+    throw new ApiError(StatusCode.UNAUTHORIZED, "Current password is incorrect");
+  }
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+  return sendApiResponse({
+    res,
+    data: null,
+    message: "Password changed successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const getCurrentUser = catchAsync(async (req, res) => {
+  const user = await User.findById(req.user._id).select("-password -refreshToken");
+  if (!user) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+  return sendApiResponse({
+    res,
+    data: user,
+    message: "User fetched successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const updateUserAccountDetails = catchAsync(async (req, res) => {
+  const { fullName, email } = req.body;
+  if (!fullName || !email) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Full name and email are required");
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        fullName,
+        email,
+      },
+    },
+    {
+      new: true,
+    }
+  ).select("-password -refreshToken");
+
+  if (!user) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+  return sendApiResponse({
+    res,
+    data: user,
+    message: "User updated successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const updateUserAvatar = catchAsync(async (req, res) => {
+  const avatarLocalPath = req.file?.path;
+  if (!avatarLocalPath) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Profile picture are required");
+  }
+
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
+  if (!avatar?.url) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Failed to upload profile picture");
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        avatar: avatar.url,
+      },
+    },
+    {
+      new: true,
+    }
+  ).select("-password -refreshToken");
+  return sendApiResponse({
+    res,
+    data: user,
+    message: "Profile picture updated successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const updateUserCoverImage = catchAsync(async (req, res) => {
+  const coverImageLocalPath = req.file?.path;
+  if (!coverImageLocalPath) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Cover image are required");
+  }
+
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+  if (!coverImage?.url) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Failed to upload profile picture");
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        coverImage: coverImage.url,
+      },
+    },
+    {
+      new: true,
+    }
+  ).select("-password -refreshToken");
+
+  return sendApiResponse({
+    res,
+    data: user,
+    message: "Cover image updated successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
 export const userController = {
   registerUser,
   loginUser,
   logoutUser,
   refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateUserAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
 };
