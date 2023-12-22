@@ -197,7 +197,7 @@ const getCurrentUser = catchAsync(async (req, res) => {
 
 const updateUserAccountDetails = catchAsync(async (req, res) => {
   const { fullName, email } = req.body;
-  if (!fullName || !email) {
+  if (!(fullName || email)) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Full name and email are required");
   }
   const user = await User.findByIdAndUpdate(
