@@ -283,6 +283,68 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
   });
 });
 
+const getUserChannelProfile = catchAsync(async (req, res) => {
+  const { username } = req.query ?? req.params;
+
+  if (!username?.trim()) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
+  }
+  const channel = await User.aggregate([
+    { $match: { username: username?.toLowerCase() } },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    {
+      $addFields: {
+        subscribersCount: { $size: "$subscribers" },
+        channelSubscribedToCount: { $size: "$subscribedTo" },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        avatar: 1,
+        subscribersCount: 1,
+        channelSubscribedToCount: 1,
+        isSubscribed: 1,
+        email: 1,
+        coverImage: 1,
+      },
+    },
+  ]);
+
+  if (!channel || !channel.length) {
+    throw new ApiError(StatusCode.NOT_FOUND, "Channel not found");
+  }
+  return sendApiResponse({
+    res,
+    data: channel[0],
+    message: "User channel fetched successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
 export const userController = {
   registerUser,
   loginUser,
@@ -293,4 +355,5 @@ export const userController = {
   updateUserAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelProfile,
 };

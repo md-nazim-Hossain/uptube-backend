@@ -15,6 +15,7 @@ router.route("/login").post(userController.loginUser);
 
 // Protect all routes after this middleware
 router.route("/profile").get(verifyJWT, userController.getCurrentUser);
+router.route("/channel-profile").get(verifyJWT, userController.getUserChannelProfile);
 router.route("/logout").post(verifyJWT, userController.logoutUser);
 router.route("/refresh-token").post(userController.refreshAccessToken);
 router.route("/reset-password").post(verifyJWT, userController.changeCurrentPassword);
