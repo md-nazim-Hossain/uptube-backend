@@ -6,6 +6,7 @@ import { User } from "../models/user.model.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -284,7 +285,7 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
 });
 
 const getUserChannelProfile = catchAsync(async (req, res) => {
-  const { username } = req.query ?? req.params;
+  const { username } = req.params;
 
   if (!username?.trim()) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
@@ -345,6 +346,60 @@ const getUserChannelProfile = catchAsync(async (req, res) => {
   });
 });
 
+const getUserWatchHistory = catchAsync(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
+                    email: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: {
+                $arrayElemAt: ["$owner", 0],
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+  if (!user || !user.length) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+  return sendApiResponse({
+    res,
+    data: user[0].watchHistory,
+    message: "User watch history fetched successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
 export const userController = {
   registerUser,
   loginUser,
@@ -356,4 +411,5 @@ export const userController = {
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
+  getUserWatchHistory,
 };
