@@ -47,6 +47,18 @@ const uploadVideo = catchAsync(async (req, res) => {
   });
 });
 
+const deleteVideo = catchAsync(async (req, res) => {
+  const video = await Video.findByIdAndDelete(req.params.id);
+  if (!video) throw new Error("Video not found");
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: video,
+    message: "Video deleted successfully",
+  });
+});
+
 export const videoController = {
   uploadVideo,
+  deleteVideo,
 };

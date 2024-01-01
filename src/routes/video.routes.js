@@ -19,5 +19,6 @@ router.route("/upload-video").post(
   ]),
   videoController.uploadVideo
 );
+router.route("/delete-video/:id").delete(verifyJWT, videoController.deleteVideo);
 
 export default router;
