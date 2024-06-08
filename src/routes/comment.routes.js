@@ -6,3 +6,5 @@ const router = Router();
 
 router.route("/comment").post(verifyJWT, commentController.createComment);
 router.route("/comment/:id").delete(verifyJWT, commentController.deleteComment);
+
+export default router;

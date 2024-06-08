@@ -6,3 +6,5 @@ const router = Router();
 
 router.route("/like").post(verifyJWT, likeController.createLike);
 router.route("/dislike/:id").delete(verifyJWT, likeController.disLike);
+
+export default router;

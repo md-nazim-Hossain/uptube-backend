@@ -6,3 +6,5 @@ const router = Router();
 
 router.route("/create-playlist").post(verifyJWT, playlistController.createPlaylist);
 router.route("/playlist/:id").delete(verifyJWT, playlistController.deletePlaylist);
+
+export default router;
