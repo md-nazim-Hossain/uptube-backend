@@ -18,6 +18,7 @@ import tweetsRoutes from "./routes/tweet.routes.js";
 import likesRoutes from "./routes/like.routes.js";
 import commentsRoutes from "./routes/like.routes.js";
 import playlistsRoutes from "./routes/playlist.routes.js";
+import subscriptionsRoutes from "./routes/subscriptions.routes.js";
 import errorHandler from "./middlewares/error.middleware.js";
 
 // routes declaration
@@ -28,6 +29,7 @@ app.use("/api/v1/tweets", tweetsRoutes);
 app.use("/api/v1/likes", likesRoutes);
 app.use("/api/v1/comments", commentsRoutes);
 app.use("/api/v1/playlists", playlistsRoutes);
+app.use("/api/v1/subscriptions", subscriptionsRoutes);
 app.use(errorHandler);
 
 export { app };

@@ -24,6 +24,89 @@ const generateAccessAndRefreshToken = async (userId) => {
   }
 };
 
+const getChannelProfile = async (username, id) => {
+  let matcher;
+  if (username && id) {
+    const isContainSymbol = username.includes("@");
+    matcher = { username: isContainSymbol ? username.toLowerCase() : "@" + username?.toLowerCase() };
+  } else if (!username && id) {
+    matcher = { _id: new mongoose.Types.ObjectId(id) };
+  } else {
+    matcher = {};
+  }
+
+  return await User.aggregate([
+    { $match: matcher },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "_id",
+        foreignField: "owner",
+        as: "videos",
+        pipeline: [
+          {
+            $group: {
+              _id: "$_id",
+              totalViews: { $sum: "$views" },
+            },
+          },
+        ],
+      },
+    },
+
+    {
+      $addFields: {
+        subscribersCount: { $size: "$subscribers" },
+        channelSubscribedToCount: { $size: "$subscribedTo" },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+        totalVideos: { $size: "$videos" },
+        totalViews: {
+          $sum: "$videos.totalViews",
+        },
+      },
+    },
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        avatar: 1,
+        subscribersCount: 1,
+        channelSubscribedToCount: 1,
+        isSubscribed: 1,
+        email: 1,
+        coverImage: 1,
+        description: 1,
+        totalVideos: 1,
+        totalViews: 1,
+        createdAt: 1,
+        isVerified: 1,
+      },
+    },
+  ]);
+};
+
 const registerUser = catchAsync(async (req, res) => {
   const { username, email, password, fullName } = req.body;
   if (!username || !email || !password || !fullName) {
@@ -56,7 +139,7 @@ const registerUser = catchAsync(async (req, res) => {
   //   throw new ApiError(StatusCode.BAD_REQUEST, "Failed to upload images");
   // }
   const user = await User.create({
-    username: username.toLowerCase(),
+    username: "@" + username.toLowerCase(),
     email,
     password,
     fullName,
@@ -82,7 +165,7 @@ const registerUser = catchAsync(async (req, res) => {
 
 const checkUserNameIsUnique = catchAsync(async (req, res) => {
   const { username } = req.params;
-  const user = await User.findOne({ username, isVerified: true });
+  const user = await User.findOne({ username: "@" + username, isVerified: true });
   if (!user) {
     return sendApiResponse({
       res,
@@ -104,8 +187,10 @@ const loginUser = catchAsync(async (req, res) => {
   } else if (!password) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Password are required");
   }
-
-  const findUser = await User.findOne({ $or: [{ email: identifier }, { username: identifier }] });
+  const isContainSymbol = identifier.startsWith("@");
+  const findUser = await User.findOne({
+    $or: [{ email: identifier }, { username: isContainSymbol ? identifier : "@" + identifier }],
+  });
 
   if (!findUser) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
@@ -207,14 +292,17 @@ const changeCurrentPassword = catchAsync(async (req, res) => {
 });
 
 const getCurrentUserProfile = catchAsync(async (req, res) => {
-  const user = await User.findById(req.user._id).select("-password -refreshToken");
-  if (!user) {
-    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  if (!req?.user) {
+    throw new ApiError(StatusCode.UNAUTHORIZED, "Unauthorized request");
+  }
+  const profile = await getChannelProfile("", req.user._id);
+  if (!profile || !profile.length) {
+    throw new ApiError(StatusCode.NOT_FOUND, "Profile not found");
   }
   return sendApiResponse({
     res,
-    data: user,
-    message: "User fetched successfully",
+    data: profile[0],
+    message: "User profile fetched successfully",
     statusCode: StatusCode.OK,
   });
 });
@@ -322,55 +410,10 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
 
 const getUserChannelProfile = catchAsync(async (req, res) => {
   const { username } = req.params;
-
   if (!username?.trim()) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
   }
-  const channel = await User.aggregate([
-    { $match: { username: username?.toLowerCase() } },
-    {
-      $lookup: {
-        from: "subscriptions",
-        localField: "_id",
-        foreignField: "channel",
-        as: "subscribers",
-      },
-    },
-    {
-      $lookup: {
-        from: "subscriptions",
-        localField: "_id",
-        foreignField: "subscriber",
-        as: "subscribedTo",
-      },
-    },
-    {
-      $addFields: {
-        subscribersCount: { $size: "$subscribers" },
-        channelSubscribedToCount: { $size: "$subscribedTo" },
-        isSubscribed: {
-          $cond: {
-            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
-            then: true,
-            else: false,
-          },
-        },
-      },
-    },
-    {
-      $project: {
-        fullName: 1,
-        username: 1,
-        avatar: 1,
-        subscribersCount: 1,
-        channelSubscribedToCount: 1,
-        isSubscribed: 1,
-        email: 1,
-        coverImage: 1,
-      },
-    },
-  ]);
-
+  const channel = await getChannelProfile(username, req?.user?._id ?? "");
   if (!channel || !channel.length) {
     throw new ApiError(StatusCode.NOT_FOUND, "Channel not found");
   }

@@ -13,11 +13,11 @@ router.route("/register").post(
 );
 router.route("/login").post(userController.loginUser);
 router.get("/check-username-unique", userController.checkUserNameIsUnique);
+router.route("/:username/channel-profile").get(userController.getUserChannelProfile);
 
 // Protect all routes after this middleware
 router.route("/profile").get(verifyJWT, userController.getCurrentUserProfile);
 router.route("/user").get(verifyJWT, userController.getCurrentUser);
-router.route("/:username/channel-profile").get(verifyJWT, userController.getUserChannelProfile);
 router.route("/watch-history").get(verifyJWT, userController.getUserWatchHistory);
 router.route("/like-videos").get(verifyJWT, userController.getUserLikeVideos);
 router.route("/logout").post(verifyJWT, userController.logoutUser);
