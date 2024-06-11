@@ -8,7 +8,12 @@ const app = express();
 app.use(express.static("public"));
 app.use(express.json({ limit: config.constants.limit }));
 app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
-app.use(cors({ origin: config.cors_origin, credentials: true }));
+app.use(
+  cors([
+    { origin: config.cors_origin, credentials: true },
+    { origin: "http://localhost:3000", credentials: true },
+  ])
+);
 app.use(cookieParser());
 
 //routes import ;

@@ -3,7 +3,7 @@ import { DB_NAME, LIMIT } from "../constants.js";
 export const config = {
   port: process.env.PORT || 5000,
   db_url: process.env.DATABASE_URL,
-  cors_origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+  cors_origin: "https://up-tube.vercel.app",
   constants: {
     db_name: DB_NAME,
     limit: LIMIT,
