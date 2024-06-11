@@ -40,25 +40,27 @@ const registerUser = catchAsync(async (req, res) => {
   }
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
   const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+  // if (!avatarLocalPath) {
+  //   throw new ApiError(StatusCode.BAD_REQUEST, "Avatar is required");
+  // }
 
-  if (!avatarLocalPath) {
-    throw new ApiError(StatusCode.BAD_REQUEST, "Avatar is required");
+  let avatar;
+  if (avatarLocalPath) {
+    avatar = await uploadOnCloudinary(avatarLocalPath);
   }
-
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
   let coverImage;
   if (coverImageLocalPath) {
     coverImage = await uploadOnCloudinary(coverImageLocalPath);
   }
-  if (!avatar) {
-    throw new ApiError(StatusCode.BAD_REQUEST, "Failed to upload images");
-  }
+  // if (!avatar) {
+  //   throw new ApiError(StatusCode.BAD_REQUEST, "Failed to upload images");
+  // }
   const user = await User.create({
     username: username.toLowerCase(),
     email,
     password,
     fullName,
-    avatar: avatar.url,
+    avatar: avatar?.url || "",
     coverImage: coverImage?.url || "",
   });
 
@@ -67,6 +69,8 @@ const registerUser = catchAsync(async (req, res) => {
   }
   user.password = undefined;
   user.refreshToken = undefined;
+  user.watchHistory = undefined;
+  user.likeVideos = undefined;
 
   return sendApiResponse({
     data: user,
@@ -76,26 +80,45 @@ const registerUser = catchAsync(async (req, res) => {
   });
 });
 
+const checkUserNameIsUnique = catchAsync(async (req, res) => {
+  const { username } = req.params;
+  const user = await User.findOne({ username, isVerified: true });
+  if (!user) {
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      message: "User not found",
+    });
+  }
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    message: "User found",
+  });
+});
+
 const loginUser = catchAsync(async (req, res) => {
-  const { email, password, username } = req.body;
-  if (!(username || email)) {
+  const { identifier, password } = req.body;
+  if (!identifier) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Username or email is required");
   } else if (!password) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Password are required");
   }
 
-  const findUser = await User.findOne({ $or: [{ email }, { username }] });
+  const findUser = await User.findOne({ $or: [{ email: identifier }, { username: identifier }] });
 
   if (!findUser) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
   if (!(await findUser.isPasswordCorrect(password))) {
-    throw new ApiError(StatusCode.UNAUTHORIZED, "Invalid credentials");
+    throw new ApiError(StatusCode.BAD_REQUEST, "Invalid credentials");
   }
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(findUser._id);
   findUser.refreshToken = undefined;
   findUser.password = undefined;
+  findUser.watchHistory = undefined;
+  findUser.likeVideos = undefined;
   const options = {
     httpOnly: true,
     secure: true,
@@ -183,8 +206,21 @@ const changeCurrentPassword = catchAsync(async (req, res) => {
   });
 });
 
-const getCurrentUser = catchAsync(async (req, res) => {
+const getCurrentUserProfile = catchAsync(async (req, res) => {
   const user = await User.findById(req.user._id).select("-password -refreshToken");
+  if (!user) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+  return sendApiResponse({
+    res,
+    data: user,
+    message: "User fetched successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const getCurrentUser = catchAsync(async (req, res) => {
+  const user = await User.findById(req.user._id).select("-password -refreshToken -watchHistory -likeVideos");
   if (!user) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
@@ -400,6 +436,56 @@ const getUserWatchHistory = catchAsync(async (req, res) => {
   });
 });
 
+const getUserLikeVideos = catchAsync(async (req, res) => {
+  const id = req.user._id;
+  if (!id) throw new ApiError(StatusCode.UNAUTHORIZED, "Unauthorized request");
+  const videos = await User.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(id) } },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "likeVideos",
+        foreignField: "_id",
+        as: "likeVideos",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
+                    email: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: {
+                $arrayElemAt: ["$owner", 0],
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+  if (!videos || !videos.length) throw new ApiError(StatusCode.NOT_FOUND, "Videos not found");
+  return sendApiResponse({
+    res,
+    data: videos[0].likeVideos,
+    message: "User likes videos fetched successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
 export const userController = {
   registerUser,
   loginUser,
@@ -412,4 +498,7 @@ export const userController = {
   updateUserCoverImage,
   getUserChannelProfile,
   getUserWatchHistory,
+  checkUserNameIsUnique,
+  getUserLikeVideos,
+  getCurrentUserProfile,
 };

@@ -4,6 +4,59 @@ import { sendApiResponse } from "../utils/ApiResponse.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import StatusCode from "http-status-codes";
+import ApiError from "../utils/ApiError.js";
+
+const getAllVideos = catchAsync(async (req, res) => {
+  const videos = await Video.find({ isPublished: true });
+  if (!videos || videos.length === 0)
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      data: [],
+      message: "No videos found",
+    });
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: videos,
+    message: "Videos found successfully",
+  });
+});
+
+const getVideoById = catchAsync(async (req, res) => {
+  const video = await Video.findById(req.params.id);
+  if (!video || !video.isPublished)
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      data: null,
+      message: "No video found or video is not published",
+    });
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: video,
+    message: "Video found successfully",
+  });
+});
+
+const getVideoByUsername = catchAsync(async (req, res) => {
+  if (!req.params.username) throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
+  const videos = await Video.find({ owner: req.params.username, isPublished: true });
+  if (!videos)
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      data: [],
+      message: "No videos found",
+    });
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: videos,
+    message: "Videos found successfully",
+  });
+});
 
 const uploadVideo = catchAsync(async (req, res) => {
   const { title, description, isPublished } = req.body;
@@ -61,4 +114,7 @@ const deleteVideo = catchAsync(async (req, res) => {
 export const videoController = {
   uploadVideo,
   deleteVideo,
+  getVideoById,
+  getAllVideos,
+  getVideoByUsername,
 };

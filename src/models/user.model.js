@@ -19,6 +19,7 @@ const userSchema = new Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      index: true,
     },
     fullName: {
       type: String,
@@ -26,15 +27,25 @@ const userSchema = new Schema(
       trim: true,
       index: true,
     },
-
+    description: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     avatar: {
       type: String,
-      required: true,
+      // required: true,
     },
     coverImage: {
       type: String,
     },
     watchHistory: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Video",
+      },
+    ],
+    likeVideos: [
       {
         type: Schema.Types.ObjectId,
         ref: "Video",
@@ -46,6 +57,10 @@ const userSchema = new Schema(
     },
     refreshToken: {
       type: String,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
