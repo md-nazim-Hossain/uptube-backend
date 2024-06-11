@@ -180,6 +180,14 @@ const checkUserNameIsUnique = catchAsync(async (req, res) => {
   });
 });
 
+const get = catchAsync(async (req, res) => {
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    message: "User found",
+  });
+});
+
 const loginUser = catchAsync(async (req, res) => {
   const { identifier, password } = req.body;
   if (!identifier) {
@@ -544,4 +552,5 @@ export const userController = {
   checkUserNameIsUnique,
   getUserLikeVideos,
   getCurrentUserProfile,
+  get,
 };
