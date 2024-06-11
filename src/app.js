@@ -9,7 +9,7 @@ const allowlist = [config.cors_origin, "http://localhost:3000"];
 app.use(express.static("public"));
 app.use(express.json({ limit: config.constants.limit }));
 app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
-app.use(cors());
+app.use(cors({ origin: "*", credentials: true }));
 app.use(cookieParser());
 
 //routes import ;
