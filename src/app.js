@@ -7,9 +7,9 @@ const app = express();
 const allowlist = [config.cors_origin, "http://localhost:3000"];
 // =========== app configurations ============== //
 app.use(express.static("public"));
-app.use(express.json({ limit: config.constants.limit }));
 app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
-app.use(cors({ origin: config.cors_origin, credentials: true, optionsSuccessStatus: 200 }));
+app.use(express.json({ limit: config.constants.limit }));
+app.use(cors({ origin: allowlist, credentials: true, optionsSuccessStatus: 200 }));
 app.use(cookieParser());
 
 //routes import ;
@@ -21,9 +21,9 @@ import commentsRoutes from "./routes/like.routes.js";
 import playlistsRoutes from "./routes/playlist.routes.js";
 import subscriptionsRoutes from "./routes/subscriptions.routes.js";
 import errorHandler from "./middlewares/error.middleware.js";
+import { sendApiResponse } from "./utils/ApiResponse.js";
 
 // routes declaration
-
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/videos", videosRoutes);
 app.use("/api/v1/tweets", tweetsRoutes);
@@ -32,5 +32,13 @@ app.use("/api/v1/comments", commentsRoutes);
 app.use("/api/v1/playlists", playlistsRoutes);
 app.use("/api/v1/subscriptions", subscriptionsRoutes);
 app.use(errorHandler);
+app.use((req, res, next) => {
+  sendApiResponse({
+    res,
+    statusCode: 404,
+    message: "Route not found",
+  });
 
+  next();
+});
 export { app };
