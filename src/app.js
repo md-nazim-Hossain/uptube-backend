@@ -17,7 +17,7 @@ import userRoutes from "./routes/user.routes.js";
 import videosRoutes from "./routes/video.routes.js";
 import tweetsRoutes from "./routes/tweet.routes.js";
 import likesRoutes from "./routes/like.routes.js";
-import commentsRoutes from "./routes/like.routes.js";
+import commentsRoutes from "./routes/comment.routes.js";
 import playlistsRoutes from "./routes/playlist.routes.js";
 import subscriptionsRoutes from "./routes/subscriptions.routes.js";
 import errorHandler from "./middlewares/error.middleware.js";
