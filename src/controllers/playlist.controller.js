@@ -1,6 +1,8 @@
 import { catchAsync } from "../utils/catchAsync.js";
 import { PlayList } from "../models/playlist.model.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
+import mongoose from "mongoose";
+import StatusCode from "http-status-codes";
 
 const getAllPlaylists = catchAsync(async (req, res) => {
   const playlists = await PlayList.find({ owner: req.user._id });
@@ -31,12 +33,14 @@ const getPlayListById = catchAsync(async (req, res) => {
 });
 
 const createPlaylist = catchAsync(async (req, res) => {
-  const { name, description } = req.body;
-  if (!name || !description) throw new Error("Name and description is required");
+  const { name, description, isPublished, videos } = req.body;
+  if (!name || !description || !videos?.length) throw new Error("Name, description and one video is required");
   const playlist = await PlayList.create({
     name,
     description,
+    isPublished,
     owner: new mongoose.Types.ObjectId(req.user._id),
+    videos: videos.map((video) => new mongoose.Types.ObjectId(video)),
   });
   if (!playlist) throw new Error("Error creating playlist");
   return sendApiResponse({
@@ -48,9 +52,9 @@ const createPlaylist = catchAsync(async (req, res) => {
 });
 
 const updatePlaylist = catchAsync(async (req, res) => {
-  const { name, description } = req.body;
-  if (!name || !description) throw new Error("Name and description is required");
-  const playlist = await PlayList.findByIdAndUpdate(req.params.id, { name, description });
+  const { name, description, isPublished } = req.body;
+  if (!name || !description || !isPublished) throw new Error("Name and description is required");
+  const playlist = await PlayList.findByIdAndUpdate(req.params.id, { name, description, isPublished }, { new: true });
   if (!playlist) throw new Error("Playlist not found");
   return sendApiResponse({
     res,

@@ -21,6 +21,10 @@ const playlistsSchema = new Schema(
       ref: "User",
       required: true,
     },
+    isPublished: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

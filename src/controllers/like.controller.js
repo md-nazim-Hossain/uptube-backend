@@ -1,6 +1,8 @@
+import mongoose from "mongoose";
 import { Like } from "../models/like.model.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
 import { catchAsync } from "../utils/catchAsync.js";
+import StatusCode from "http-status-codes";
 
 const createLike = catchAsync(async (req, res) => {
   const { tweetId, commentId, videoId } = req.body;
