@@ -7,13 +7,25 @@ import StatusCode from "http-status-codes";
 const createTweet = catchAsync(async (req, res) => {
   const { content } = req.body;
   if (!content) throw new Error("Content is required");
-  const tweet = await Tweet.create({ content, owner: new mongoose.Types.ObjectId(req.user._id) });
+  const tweet = await Tweet.create({ content, author: new mongoose.Types.ObjectId(req.user._id) });
   if (!tweet) throw new Error("Error creating tweet");
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: tweet,
     message: "Tweet created successfully",
+  });
+});
+
+const updateTweet = catchAsync(async (req, res) => {
+  if (!req.body.content) throw new Error("Content is required");
+  const tweet = await Tweet.findByIdAndUpdate(req.params.id, req.body.content, { new: true });
+  if (!tweet) throw new Error("Tweet not found");
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: tweet,
+    message: "Tweet updated successfully",
   });
 });
 
@@ -31,4 +43,5 @@ const deleteTweet = catchAsync(async (req, res) => {
 export const tweetsController = {
   createTweet,
   deleteTweet,
+  updateTweet,
 };
