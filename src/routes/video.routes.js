@@ -6,6 +6,7 @@ import { upload } from "../middlewares/multer.middleware.js";
 const router = Router();
 router.route("/get-all-videos").get(videoController.getAllVideos);
 router.route("/get-video/:id").get(videoController.getVideoById);
+
 // Protect all routes after this middleware
 router.route("/upload-video").post(
   verifyJWT,
@@ -20,6 +21,18 @@ router.route("/upload-video").post(
     },
   ]),
   videoController.uploadVideo
+);
+
+router.route("/get-all-videos-by-user").get(verifyJWT, videoController.getAllVideosByCurrentUser);
+router.route("/update-video/:id").put(
+  verifyJWT,
+  upload.fields([
+    {
+      name: "thumbnail",
+      maxCount: 1,
+    },
+  ]),
+  videoController.updateVideo
 );
 router.route("/delete-video/:id").delete(verifyJWT, videoController.deleteVideo);
 

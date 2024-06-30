@@ -58,6 +58,40 @@ const getVideoByUsername = catchAsync(async (req, res) => {
   });
 });
 
+const getAllVideosByCurrentUser = catchAsync(async (req, res) => {
+  const videos = await Video.aggregate([
+    { $match: { owner: new mongoose.Types.ObjectId(req.user._id) } },
+
+    { $lookup: { from: "comments", localField: "_id", foreignField: "video", as: "comments" } },
+    { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
+    { $lookup: { from: "playlists", localField: "_id", foreignField: "videos", as: "playlists" } },
+    {
+      $addFields: {
+        likes: { $size: "$likes" },
+        comments: { $size: "$comments" },
+        isLiked: {
+          $cond: { if: { $in: [req.user._id, "$likes.likedBy"] }, then: true, else: false },
+        },
+      },
+    },
+    { $sort: { createdAt: -1 } },
+    { $limit: 10 },
+  ]);
+  if (!videos)
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      data: [],
+      message: "No videos found",
+    });
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: videos,
+    message: "Videos found successfully",
+  });
+});
+
 const uploadVideo = catchAsync(async (req, res) => {
   const { title, description, isPublished } = req.body;
   if (!title || !description) {
@@ -100,6 +134,32 @@ const uploadVideo = catchAsync(async (req, res) => {
   });
 });
 
+const updateVideo = catchAsync(async (req, res) => {
+  const { title, description, isPublished, thumbnail } = req.body;
+  if (!title || !description || !thumbnail || !isPublished) {
+    throw new Error("One field is required");
+  }
+
+  const thumbnailFilesLocalPath = req.files.thumbnail?.[0]?.path;
+
+  if (thumbnailFilesLocalPath) {
+    const thumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
+    if (!thumbnail) {
+      throw new Error("Error uploading files to cloudinary");
+    }
+    req.body.thumbnail = thumbnail.url;
+  }
+
+  const video = await Video.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  if (!video) throw new Error("Video not found");
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: video,
+    message: "Video updated successfully",
+  });
+});
+
 const deleteVideo = catchAsync(async (req, res) => {
   const video = await Video.findByIdAndDelete(req.params.id);
   if (!video) throw new Error("Video not found");
@@ -117,4 +177,6 @@ export const videoController = {
   getVideoById,
   getAllVideos,
   getVideoByUsername,
+  getAllVideosByCurrentUser,
+  updateVideo,
 };
