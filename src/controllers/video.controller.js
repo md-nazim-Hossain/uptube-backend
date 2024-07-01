@@ -5,12 +5,40 @@ import { catchAsync } from "../utils/catchAsync.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
+import { Like } from "../models/like.model.js";
 
 const getAllVideos = catchAsync(async (req, res) => {
   const limit = req.query.limit || 10;
   const skip = req.query.skip || 0;
   const totalVideos = await Video.countDocuments({});
-  const videos = await Video.find({ isPublished: true }).limit(limit).skip(skip).populate("owner");
+  const videos = await Video.aggregate([
+    { $match: { isPublished: true } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          { $project: { password: 0, refreshToken: 0, accessToken: 0 } },
+          {
+            $lookup: {
+              from: "subscriptions",
+              localField: "_id",
+              foreignField: "channel",
+              as: "subscribers",
+            },
+          },
+          { $addFields: { subscribersCount: { $size: "$subscribers" } } },
+          { $project: { subscribers: 0 } },
+        ],
+      },
+    },
+    { $skip: skip },
+    { $limit: limit },
+    { $sort: { createdAt: -1 } },
+    { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
+  ]);
   if (!videos || videos.length === 0)
     return sendApiResponse({
       res,

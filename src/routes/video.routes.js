@@ -8,6 +8,7 @@ router.route("/get-all-videos").get(videoController.getAllVideos);
 router.route("/get-video/:id").get(videoController.getVideoById);
 
 // Protect all routes after this middleware
+router.route("/get-all-videos-by-user").get(verifyJWT, videoController.getAllVideosByCurrentUser);
 router.route("/upload-video").post(
   verifyJWT,
   upload.fields([
@@ -24,7 +25,6 @@ router.route("/upload-video").post(
 );
 router.route("/make-copy/:id").post(verifyJWT, videoController.makeACopy);
 
-router.route("/get-all-videos-by-user").get(verifyJWT, videoController.getAllVideosByCurrentUser);
 router.route("/update-video/:id").put(
   verifyJWT,
   upload.fields([
