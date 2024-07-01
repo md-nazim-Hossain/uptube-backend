@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import StatusCode from "http-status-codes";
 
 const getAllPlaylists = catchAsync(async (req, res) => {
-  const playlists = await PlayList.find({ owner: req.user._id });
+  const playlists = await PlayList.find({ owner: req.user._id }).populate("videos").sort({ createdAt: -1 });
   if (!playlists || playlists.length === 0)
     return sendApiResponse({
       res,
@@ -52,9 +52,14 @@ const createPlaylist = catchAsync(async (req, res) => {
 });
 
 const updatePlaylist = catchAsync(async (req, res) => {
-  const { name, description, isPublished } = req.body;
-  if (!name || !description || !isPublished) throw new Error("Name and description is required");
-  const playlist = await PlayList.findByIdAndUpdate(req.params.id, { name, description, isPublished }, { new: true });
+  const { name, description, isPublished, videos } = req.body;
+  if (!name || !description || !isPublished || !videos)
+    throw new Error("Name, description, isPublished and videos is required");
+  const playlist = await PlayList.findByIdAndUpdate(
+    req.params.id,
+    { name, description, isPublished, videos: videos.map((video) => new mongoose.Types.ObjectId(video)) },
+    { new: true }
+  );
   if (!playlist) throw new Error("Playlist not found");
   return sendApiResponse({
     res,

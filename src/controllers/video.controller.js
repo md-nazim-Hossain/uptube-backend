@@ -7,18 +7,27 @@ import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
 
 const getAllVideos = catchAsync(async (req, res) => {
-  const videos = await Video.find({ isPublished: true });
+  const limit = req.query.limit || 10;
+  const skip = req.query.skip || 0;
+  const totalVideos = await Video.countDocuments({});
+  const videos = await Video.find({ isPublished: true }).limit(limit).skip(skip).populate("owner");
   if (!videos || videos.length === 0)
     return sendApiResponse({
       res,
       statusCode: StatusCode.OK,
-      data: [],
+      data: {
+        data: [],
+        total: totalVideos,
+      },
       message: "No videos found",
     });
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: videos,
+    data: {
+      data: videos,
+      total: totalVideos,
+    },
     message: "Videos found successfully",
   });
 });
@@ -160,6 +169,27 @@ const updateVideo = catchAsync(async (req, res) => {
   });
 });
 
+const makeACopy = catchAsync(async (req, res) => {
+  const video = await Video.findById(req.params.id);
+  if (!video) throw new Error("Video not found");
+  const newVideo = await Video.create({
+    description: video.description,
+    title: video.title,
+    videoFile: video.videoFile,
+    thumbnail: video.thumbnail,
+    duration: video.duration,
+    isPublished: video.isPublished,
+    owner: new mongoose.Types.ObjectId(video.owner),
+  });
+  if (!newVideo) throw new Error("Error creating new video");
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: newVideo,
+    message: "Video copied successfully",
+  });
+});
+
 const deleteVideo = catchAsync(async (req, res) => {
   const video = await Video.findByIdAndDelete(req.params.id);
   if (!video) throw new Error("Video not found");
@@ -179,4 +209,5 @@ export const videoController = {
   getVideoByUsername,
   getAllVideosByCurrentUser,
   updateVideo,
+  makeACopy,
 };

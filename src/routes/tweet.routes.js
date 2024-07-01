@@ -4,6 +4,7 @@ import { tweetsController } from "../controllers/tweets.controller.js";
 
 const router = Router();
 
+router.route("/get-all-user-tweets").get(verifyJWT, tweetsController.getAllUserTweets);
 router.route("/create-tweet").post(verifyJWT, tweetsController.createTweet);
 router.route("/update-tweet/:id").put(verifyJWT, tweetsController.updateTweet);
 router.route("/delete-tweet/:id").delete(verifyJWT, tweetsController.deleteTweet);

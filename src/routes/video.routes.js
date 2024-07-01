@@ -22,6 +22,7 @@ router.route("/upload-video").post(
   ]),
   videoController.uploadVideo
 );
+router.route("/make-copy/:id").post(verifyJWT, videoController.makeACopy);
 
 router.route("/get-all-videos-by-user").get(verifyJWT, videoController.getAllVideosByCurrentUser);
 router.route("/update-video/:id").put(
