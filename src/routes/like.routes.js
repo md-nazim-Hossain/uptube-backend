@@ -4,6 +4,7 @@ import { likeController } from "../controllers/like.controller.js";
 
 const router = Router();
 
+router.route("/get-user-like-videos").get(verifyJWT, likeController.getUserLikeVideos);
 router.route("/like").post(verifyJWT, likeController.createLike);
 router.route("/dislike/:id").delete(verifyJWT, likeController.disLike);
 

@@ -487,56 +487,6 @@ const getUserWatchHistory = catchAsync(async (req, res) => {
   });
 });
 
-const getUserLikeVideos = catchAsync(async (req, res) => {
-  const id = req.user._id;
-  if (!id) throw new ApiError(StatusCode.UNAUTHORIZED, "Unauthorized request");
-  const videos = await User.aggregate([
-    { $match: { _id: new mongoose.Types.ObjectId(id) } },
-    {
-      $lookup: {
-        from: "videos",
-        localField: "likeVideos",
-        foreignField: "_id",
-        as: "likeVideos",
-        pipeline: [
-          {
-            $lookup: {
-              from: "users",
-              localField: "owner",
-              foreignField: "_id",
-              as: "owner",
-              pipeline: [
-                {
-                  $project: {
-                    fullName: 1,
-                    username: 1,
-                    avatar: 1,
-                    email: 1,
-                  },
-                },
-              ],
-            },
-          },
-          {
-            $addFields: {
-              owner: {
-                $arrayElemAt: ["$owner", 0],
-              },
-            },
-          },
-        ],
-      },
-    },
-  ]);
-  if (!videos || !videos.length) throw new ApiError(StatusCode.NOT_FOUND, "Videos not found");
-  return sendApiResponse({
-    res,
-    data: videos[0].likeVideos,
-    message: "User likes videos fetched successfully",
-    statusCode: StatusCode.OK,
-  });
-});
-
 export const userController = {
   registerUser,
   loginUser,
@@ -550,7 +500,6 @@ export const userController = {
   getUserChannelProfile,
   getUserWatchHistory,
   checkUserNameIsUnique,
-  getUserLikeVideos,
   getCurrentUserProfile,
   get,
 };

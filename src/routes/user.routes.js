@@ -20,7 +20,6 @@ router.route("/:username/channel-profile").get(userController.getUserChannelProf
 router.route("/profile").get(verifyJWT, userController.getCurrentUserProfile);
 router.route("/user").get(verifyJWT, userController.getCurrentUser);
 router.route("/watch-history").get(verifyJWT, userController.getUserWatchHistory);
-router.route("/like-videos").get(verifyJWT, userController.getUserLikeVideos);
 router.route("/logout").post(verifyJWT, userController.logoutUser);
 router.route("/refresh-token").post(userController.refreshAccessToken);
 router.route("/reset-password").post(verifyJWT, userController.changeCurrentPassword);
