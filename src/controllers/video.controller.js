@@ -5,14 +5,14 @@ import { catchAsync } from "../utils/catchAsync.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
-import { Like } from "../models/like.model.js";
 
-const getAllVideos = catchAsync(async (req, res) => {
+const getAllContentsByType = catchAsync(async (req, res) => {
   const limit = req.query.limit || 10;
   const skip = req.query.skip || 0;
-  const totalVideos = await Video.countDocuments({});
-  const videos = await Video.aggregate([
-    { $match: { isPublished: true } },
+  const type = req.query.type || "video";
+  const totalContent = await Video.countDocuments({});
+  const content = await Video.aggregate([
+    { $match: { isPublished: true, type } },
     {
       $lookup: {
         from: "users",
@@ -39,30 +39,66 @@ const getAllVideos = catchAsync(async (req, res) => {
     { $sort: { createdAt: -1 } },
     { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
   ]);
-  if (!videos || videos.length === 0)
+  if (!content || content.length === 0)
     return sendApiResponse({
       res,
       statusCode: StatusCode.OK,
       data: {
         data: [],
-        total: totalVideos,
+        total: totalContent,
       },
-      message: "No videos found",
+      message: "No content found",
     });
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: {
-      data: videos,
-      total: totalVideos,
+      data: content,
+      total: totalContent,
     },
-    message: "Videos found successfully",
+    message: "Content found successfully",
   });
 });
 
 const getVideoById = catchAsync(async (req, res) => {
-  const video = await Video.findById(req.params.id);
-  if (!video || !video.isPublished)
+  const video = await Video.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          { $lookup: { from: "subscriptions", localField: "_id", foreignField: "channel", as: "subscribers" } },
+          { $project: { password: 0, refreshToken: 0, accessToken: 0, watchHistory: 0 } },
+          {
+            $addFields: {
+              subscribersCount: { $size: "$subscribers" },
+              isSubscribed: {
+                $cond: {
+                  if: { $in: [req?.user?._id, "$subscribers"] },
+                  then: true,
+                  else: false,
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
+    { $lookup: { from: "comments", localField: "_id", foreignField: "video", as: "comments" } },
+    { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
+    {
+      $addFields: {
+        likes: { $size: "$likes" },
+        comments: { $size: "$comments" },
+        isLiked: { $cond: { if: { $in: [req?.user?._id, "$likes.likedBy"] }, then: true, else: false } },
+      },
+    },
+    { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
+  ]);
+  if (!video || video.length === 0 || !video?.[0]?.isPublished)
     return sendApiResponse({
       res,
       statusCode: StatusCode.OK,
@@ -72,14 +108,14 @@ const getVideoById = catchAsync(async (req, res) => {
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: video,
+    data: video[0],
     message: "Video found successfully",
   });
 });
 
 const getVideoByUsername = catchAsync(async (req, res) => {
   if (!req.params.username) throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
-  const videos = await Video.find({ owner: req.params.username, isPublished: true });
+  const videos = await Video.find({ owner: req.params.username, isPublished: true, type: "video" });
   if (!videos)
     return sendApiResponse({
       res,
@@ -95,9 +131,10 @@ const getVideoByUsername = catchAsync(async (req, res) => {
   });
 });
 
-const getAllVideosByCurrentUser = catchAsync(async (req, res) => {
+const getAllUserContentByType = catchAsync(async (req, res) => {
+  const type = req.query.type || "video";
   const videos = await Video.aggregate([
-    { $match: { owner: new mongoose.Types.ObjectId(req.user._id) } },
+    { $match: { owner: new mongoose.Types.ObjectId(req.user._id), type } },
 
     { $lookup: { from: "comments", localField: "_id", foreignField: "video", as: "comments" } },
     { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
@@ -112,7 +149,6 @@ const getAllVideosByCurrentUser = catchAsync(async (req, res) => {
       },
     },
     { $sort: { createdAt: -1 } },
-    { $limit: 10 },
   ]);
   if (!videos)
     return sendApiResponse({
@@ -198,23 +234,24 @@ const updateVideo = catchAsync(async (req, res) => {
 });
 
 const makeACopy = catchAsync(async (req, res) => {
-  const video = await Video.findById(req.params.id);
-  if (!video) throw new Error("Video not found");
-  const newVideo = await Video.create({
-    description: video.description,
-    title: video.title,
-    videoFile: video.videoFile,
-    thumbnail: video.thumbnail,
-    duration: video.duration,
-    isPublished: video.isPublished,
-    owner: new mongoose.Types.ObjectId(video.owner),
+  const content = await Video.findById(req.params.id);
+  if (!content) throw new Error("Video not found");
+  const newContent = await Video.create({
+    description: content.description,
+    title: content.title,
+    videoFile: content.videoFile,
+    thumbnail: content.thumbnail,
+    duration: content.duration,
+    isPublished: content.isPublished,
+    type: content.type,
+    owner: new mongoose.Types.ObjectId(content.owner),
   });
-  if (!newVideo) throw new Error("Error creating new video");
+  if (!newContent) throw new Error("Error creating new video");
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: newVideo,
-    message: "Video copied successfully",
+    data: newContent,
+    message: "Content copied successfully",
   });
 });
 
@@ -233,9 +270,9 @@ export const videoController = {
   uploadVideo,
   deleteVideo,
   getVideoById,
-  getAllVideos,
+  getAllContentsByType,
   getVideoByUsername,
-  getAllVideosByCurrentUser,
+  getAllUserContentByType,
   updateVideo,
   makeACopy,
 };

@@ -4,11 +4,11 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();
-router.route("/get-all-videos").get(videoController.getAllVideos);
+router.route("/get-all-content-by-type").get(videoController.getAllContentsByType);
 router.route("/get-video/:id").get(videoController.getVideoById);
 
 // Protect all routes after this middleware
-router.route("/get-all-videos-by-user").get(verifyJWT, videoController.getAllVideosByCurrentUser);
+router.route("/get-all-user-content-by-type").get(verifyJWT, videoController.getAllUserContentByType);
 router.route("/upload-video").post(
   verifyJWT,
   upload.fields([
