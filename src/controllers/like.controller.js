@@ -46,13 +46,12 @@ const getUserLikeVideos = catchAsync(async (req, res) => {
 });
 const createLike = catchAsync(async (req, res) => {
   const { tweetId, commentId, videoId } = req.body;
-  if (!videoId) throw new Error("Video id is required");
-  const like = await Like.create({
-    likedBy: new mongoose.Types.ObjectId(req.user._id),
-    video: new mongoose.Types.ObjectId(videoId),
-    tweet: new mongoose.Types.ObjectId(tweetId),
-    comment: new mongoose.Types.ObjectId(commentId),
-  });
+  if (!(videoId || tweetId || commentId)) throw new Error("Video id, tweet id or comment id is required");
+  const createdObj = { likedBy: new mongoose.Types.ObjectId(req.user._id) };
+  if (videoId) createdObj.video = new mongoose.Types.ObjectId(videoId);
+  if (tweetId) createdObj.tweet = new mongoose.Types.ObjectId(tweetId);
+  if (commentId) createdObj.comment = new mongoose.Types.ObjectId(commentId);
+  const like = await Like.create(createdObj);
   if (!like) throw new Error("Error creating a like");
   return sendApiResponse({
     res,
@@ -64,6 +63,7 @@ const createLike = catchAsync(async (req, res) => {
 
 const disLike = catchAsync(async (req, res) => {
   const like = await Like.findByIdAndDelete(req.params.id);
+  console.log(like);
   if (!like) throw new Error("Like not found");
   return sendApiResponse({
     res,

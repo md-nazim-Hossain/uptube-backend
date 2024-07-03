@@ -61,6 +61,7 @@ const getAllContentsByType = catchAsync(async (req, res) => {
 });
 
 const getVideoById = catchAsync(async (req, res) => {
+  if (!req.params.id) throw new Error("Id is required");
   const video = await Video.aggregate([
     { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
     {
@@ -87,12 +88,30 @@ const getVideoById = catchAsync(async (req, res) => {
         ],
       },
     },
-    { $lookup: { from: "comments", localField: "_id", foreignField: "video", as: "comments" } },
+    {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "video",
+        as: "comments",
+        pipeline: [
+          { $lookup: { from: "users", localField: "owner", foreignField: "_id", as: "owner" } },
+          { $lookup: { from: "likes", localField: "_id", foreignField: "comment", as: "likes" } },
+          {
+            $addFields: {
+              owner: { $arrayElemAt: ["$owner", 0] },
+              likes: { $size: "$likes" },
+              isLiked: { $cond: { if: { $in: [req?.user?._id, "$likes.likedBy"] }, then: true, else: false } },
+            },
+          },
+          { $sort: { createdAt: -1 } },
+        ],
+      },
+    },
     { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
     {
       $addFields: {
         likes: { $size: "$likes" },
-        comments: { $size: "$comments" },
         isLiked: { $cond: { if: { $in: [req?.user?._id, "$likes.likedBy"] }, then: true, else: false } },
       },
     },

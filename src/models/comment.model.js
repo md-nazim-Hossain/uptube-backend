@@ -19,6 +19,19 @@ const commentsSchema = new Schema(
       ref: "User",
       required: true,
     },
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
+    // replies: [
+    //   {
+    //     type: Schema.Types.ObjectId,
+    //     ref: "Comment",
+    //   },
+    // ],
+    lastEditedAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
