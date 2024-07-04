@@ -12,8 +12,8 @@ router.route("/register").post(
   userController.registerUser
 );
 router.route("/login").post(userController.loginUser);
-router.get("/check-username-unique", userController.checkUserNameIsUnique);
-router.get("/get", userController.get);
+router.route("/check-username-unique").get(userController.checkUserNameIsUnique);
+router.route("/get").get(userController.get);
 router.route("/:username/channel-profile").get(userController.getUserChannelProfile);
 
 // Protect all routes after this middleware

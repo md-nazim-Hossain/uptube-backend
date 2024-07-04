@@ -26,7 +26,7 @@ const generateAccessAndRefreshToken = async (userId) => {
 
 const getChannelProfile = async (username, id) => {
   let matcher;
-  if (username && id) {
+  if (username && !id) {
     const isContainSymbol = username.includes("@");
     matcher = { username: isContainSymbol ? username.toLowerCase() : "@" + username?.toLowerCase() };
   } else if (!username && id) {
@@ -61,15 +61,20 @@ const getChannelProfile = async (username, id) => {
         as: "videos",
         pipeline: [
           {
-            $group: {
-              _id: "$_id",
-              totalViews: { $sum: "$views" },
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [{ $project: { password: 0, refreshToken: 0, accessToken: 0, watchHistory: 0 } }],
             },
           },
+          { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
+          { $sort: { createdAt: -1 } },
         ],
       },
     },
-
+    { $lookup: { from: "playlists", localField: "_id", foreignField: "owner", as: "playlists" } },
     {
       $addFields: {
         subscribersCount: { $size: "$subscribers" },
@@ -82,8 +87,11 @@ const getChannelProfile = async (username, id) => {
           },
         },
         totalVideos: { $size: "$videos" },
+        v: "$videos",
+        videos: { $filter: { input: "$videos", as: "video", cond: { $eq: ["$$video.type", "video"] } } },
+        shorts: { $filter: { input: "$videos", as: "short", cond: { $eq: ["$$short.type", "short"] } } },
         totalViews: {
-          $sum: "$videos.totalViews",
+          $sum: "$videos.views",
         },
       },
     },
@@ -102,6 +110,11 @@ const getChannelProfile = async (username, id) => {
         totalViews: 1,
         createdAt: 1,
         isVerified: 1,
+        videos: 1,
+        shorts: 1,
+        playlists: 1,
+        subscribers: 1,
+        subscribedTo: 1,
       },
     },
   ]);
@@ -303,9 +316,15 @@ const getCurrentUserProfile = catchAsync(async (req, res) => {
   if (!req?.user) {
     throw new ApiError(StatusCode.UNAUTHORIZED, "Unauthorized request");
   }
-  const profile = await getChannelProfile("", req.user._id);
+  // const profile = await getChannelProfile("", req.user._id);
+  const profile = [];
   if (!profile || !profile.length) {
-    throw new ApiError(StatusCode.NOT_FOUND, "Profile not found");
+    return sendApiResponse({
+      res,
+      data: null,
+      message: "User profile not found",
+      statusCode: StatusCode.OK,
+    });
   }
   return sendApiResponse({
     res,
@@ -421,9 +440,14 @@ const getUserChannelProfile = catchAsync(async (req, res) => {
   if (!username?.trim()) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
   }
-  const channel = await getChannelProfile(username, req?.user?._id ?? "");
+  const channel = await getChannelProfile(username, "");
   if (!channel || !channel.length) {
-    throw new ApiError(StatusCode.NOT_FOUND, "Channel not found");
+    return sendApiResponse({
+      res,
+      data: null,
+      message: "User channel not found",
+      statusCode: StatusCode.OK,
+    });
   }
   return sendApiResponse({
     res,
