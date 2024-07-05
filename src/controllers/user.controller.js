@@ -7,6 +7,7 @@ import { sendApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 import mongoose from "mongoose";
+import { getUserIdFromToken } from "../utils/jwt.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -24,15 +25,16 @@ const generateAccessAndRefreshToken = async (userId) => {
   }
 };
 
-const getChannelProfile = async (username, id) => {
+const getChannelProfile = async (req, username, id) => {
+  let userId = id || getUserIdFromToken(req);
+  if (userId) userId = new mongoose.Types.ObjectId(userId);
   let matcher;
-  if (username && !id) {
+  if (username) {
     const isContainSymbol = username.includes("@");
     matcher = { username: isContainSymbol ? username.toLowerCase() : "@" + username?.toLowerCase() };
-  } else if (!username && id) {
+  }
+  if (id) {
     matcher = { _id: new mongoose.Types.ObjectId(id) };
-  } else {
-    matcher = {};
   }
 
   return await User.aggregate([
@@ -67,7 +69,7 @@ const getChannelProfile = async (username, id) => {
         channelSubscribedToCount: { $size: "$subscribedTo" },
         isSubscribed: {
           $cond: {
-            if: { $in: [new mongoose.Types.ObjectId(id), "$subscribers.subscriber"] },
+            if: { $in: [userId, "$subscribers.subscriber"] },
             then: true,
             else: false,
           },
@@ -93,8 +95,6 @@ const getChannelProfile = async (username, id) => {
         totalViews: 1,
         createdAt: 1,
         isVerified: 1,
-        subscribers: 1,
-        subscribedTo: 1,
       },
     },
   ]);
@@ -332,7 +332,7 @@ const getUserChannelProfile = catchAsync(async (req, res) => {
   if (!username?.trim()) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
   }
-  const channel = await getChannelProfile(username, "");
+  const channel = await getChannelProfile(req, username, "");
   if (!channel || !channel.length) {
     return sendApiResponse({
       res,

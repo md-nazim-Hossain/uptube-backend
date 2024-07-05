@@ -7,6 +7,7 @@ import StatusCode from "http-status-codes";
 const getUserLikeVideos = catchAsync(async (req, res) => {
   const likeVideos = await Like.aggregate([
     { $match: { likedBy: new mongoose.Types.ObjectId(req.user._id) } },
+    { $match: { video: { $ne: null } } },
     {
       $lookup: {
         from: "videos",
@@ -44,6 +45,7 @@ const getUserLikeVideos = catchAsync(async (req, res) => {
     message: "Likes found successfully",
   });
 });
+
 const likeDislike = catchAsync(async (req, res) => {
   const { tweetId, commentId, videoId, state } = req.body;
   if (!(videoId || tweetId || commentId)) throw new Error("Video id, tweet id or comment id is required");
