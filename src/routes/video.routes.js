@@ -6,6 +6,7 @@ import { upload } from "../middlewares/multer.middleware.js";
 const router = Router();
 router.route("/get-all-content-by-type").get(videoController.getAllContentsByType);
 router.route("/get-video/:id").get(videoController.getVideoById);
+router.route("/get-video-by-user-id/:id").get(videoController.getVideoByUserId);
 
 // Protect all routes after this middleware
 router.route("/get-all-user-content-by-type").get(verifyJWT, videoController.getAllUserContentByType);

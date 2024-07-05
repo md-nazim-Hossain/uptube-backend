@@ -3,5 +3,8 @@ import { subscriptionsController } from "../controllers/subscriptions.controller
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
-router.route("/get-all-subscriptions").get(verifyJWT, subscriptionsController.getAllSubscriptions);
+router.route("/get-all-followers").get(verifyJWT, subscriptionsController.getAllFollowers);
+router
+  .route("/create-subscribe-and-unsubscribe")
+  .post(verifyJWT, subscriptionsController.createSubscribeAndUnsubscribe);
 export default router;

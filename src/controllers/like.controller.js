@@ -44,33 +44,22 @@ const getUserLikeVideos = catchAsync(async (req, res) => {
     message: "Likes found successfully",
   });
 });
-const createLike = catchAsync(async (req, res) => {
-  const { tweetId, commentId, videoId } = req.body;
+const likeDislike = catchAsync(async (req, res) => {
+  const { tweetId, commentId, videoId, state } = req.body;
   if (!(videoId || tweetId || commentId)) throw new Error("Video id, tweet id or comment id is required");
-  const createdObj = { likedBy: new mongoose.Types.ObjectId(req.user._id) };
-  if (videoId) createdObj.video = new mongoose.Types.ObjectId(videoId);
-  if (tweetId) createdObj.tweet = new mongoose.Types.ObjectId(tweetId);
-  if (commentId) createdObj.comment = new mongoose.Types.ObjectId(commentId);
-  const like = await Like.create(createdObj);
-  if (!like) throw new Error("Error creating a like");
+  let likeDislikeObj = {};
+  if (state === "like") likeDislikeObj.likedBy = new mongoose.Types.ObjectId(req.user._id);
+  if (videoId) likeDislikeObj.video = new mongoose.Types.ObjectId(videoId);
+  if (tweetId) likeDislikeObj.tweet = new mongoose.Types.ObjectId(tweetId);
+  if (commentId) likeDislikeObj.comment = new mongoose.Types.ObjectId(commentId);
+  const like = await (state === "like" ? Like.create(likeDislikeObj) : Like.findOneAndDelete(likeDislikeObj));
+  if (!like) throw new Error(`Error ${state == "like" ? "creating" : "delete"} a like`);
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: like,
-    message: "Like created successfully",
+    data: null,
+    message: `${state == "like" ? "Like created" : "Removed like"} successfully`,
   });
 });
 
-const disLike = catchAsync(async (req, res) => {
-  const like = await Like.findByIdAndDelete(req.params.id);
-  console.log(like);
-  if (!like) throw new Error("Like not found");
-  return sendApiResponse({
-    res,
-    statusCode: StatusCode.OK,
-    data: like,
-    message: "Like deleted successfully",
-  });
-});
-
-export const likeController = { createLike, disLike, getUserLikeVideos };
+export const likeController = { likeDislike, getUserLikeVideos };

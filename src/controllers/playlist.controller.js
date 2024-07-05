@@ -32,6 +32,28 @@ const getPlayListById = catchAsync(async (req, res) => {
   });
 });
 
+const getAllPlaylistByUserId = catchAsync(async (req, res) => {
+  if (!req.params.id) throw new Error("User id is required");
+  const playlists = await PlayList.find({ owner: req.params.id })
+    .sort({ createdAt: -1 })
+    .populate("videos")
+    .populate("owner", "-password -refreshToken -watchHistory")
+    .exec();
+  if (!playlists || playlists.length === 0)
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      data: [],
+      message: "No playlists found",
+    });
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: playlists,
+    message: "Playlists found successfully",
+  });
+});
+
 const createPlaylist = catchAsync(async (req, res) => {
   const { name, description, isPublished, videos } = req.body;
   if (!name || !description || !videos?.length) throw new Error("Name, description and one video is required");
@@ -86,4 +108,5 @@ export const playlistController = {
   getAllPlaylists,
   updatePlaylist,
   getPlayListById,
+  getAllPlaylistByUserId,
 };

@@ -59,37 +59,20 @@ const getChannelProfile = async (username, id) => {
         localField: "_id",
         foreignField: "owner",
         as: "videos",
-        pipeline: [
-          {
-            $lookup: {
-              from: "users",
-              localField: "owner",
-              foreignField: "_id",
-              as: "owner",
-              pipeline: [{ $project: { password: 0, refreshToken: 0, accessToken: 0, watchHistory: 0 } }],
-            },
-          },
-          { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
-          { $sort: { createdAt: -1 } },
-        ],
       },
     },
-    { $lookup: { from: "playlists", localField: "_id", foreignField: "owner", as: "playlists" } },
     {
       $addFields: {
         subscribersCount: { $size: "$subscribers" },
         channelSubscribedToCount: { $size: "$subscribedTo" },
         isSubscribed: {
           $cond: {
-            if: { $in: [id, "$subscribers.subscriber"] },
+            if: { $in: [new mongoose.Types.ObjectId(id), "$subscribers.subscriber"] },
             then: true,
             else: false,
           },
         },
         totalVideos: { $size: "$videos" },
-        v: "$videos",
-        videos: { $filter: { input: "$videos", as: "video", cond: { $eq: ["$$video.type", "video"] } } },
-        shorts: { $filter: { input: "$videos", as: "short", cond: { $eq: ["$$short.type", "short"] } } },
         totalViews: {
           $sum: "$videos.views",
         },
@@ -110,9 +93,6 @@ const getChannelProfile = async (username, id) => {
         totalViews: 1,
         createdAt: 1,
         isVerified: 1,
-        videos: 1,
-        shorts: 1,
-        playlists: 1,
         subscribers: 1,
         subscribedTo: 1,
       },
@@ -226,8 +206,8 @@ const loginUser = catchAsync(async (req, res) => {
   findUser.watchHistory = undefined;
   findUser.likeVideos = undefined;
   const options = {
-    httpOnly: true,
-    secure: true,
+    httpOnly: process.env.NODE_ENV === "production" ? true : false,
+    secure: process.env.NODE_ENV === "production" ? true : false,
   };
   return res
     .status(StatusCode.OK)
@@ -347,6 +327,82 @@ const getCurrentUser = catchAsync(async (req, res) => {
   });
 });
 
+const getUserChannelProfile = catchAsync(async (req, res) => {
+  const { username } = req.params;
+  if (!username?.trim()) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
+  }
+  const channel = await getChannelProfile(username, "");
+  if (!channel || !channel.length) {
+    return sendApiResponse({
+      res,
+      data: null,
+      message: "User channel not found",
+      statusCode: StatusCode.OK,
+    });
+  }
+  return sendApiResponse({
+    res,
+    data: channel[0],
+    message: "User channel fetched successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const getUserWatchHistory = catchAsync(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
+                    email: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: {
+                $arrayElemAt: ["$owner", 0],
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+  if (!user || !user.length) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+  return sendApiResponse({
+    res,
+    data: user[0].watchHistory,
+    message: "User watch history fetched successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
 const updateUserAccountDetails = catchAsync(async (req, res) => {
   const { fullName, email } = req.body;
   if (!(fullName || email)) {
@@ -431,82 +487,6 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
     res,
     data: user,
     message: "Cover image updated successfully",
-    statusCode: StatusCode.OK,
-  });
-});
-
-const getUserChannelProfile = catchAsync(async (req, res) => {
-  const { username } = req.params;
-  if (!username?.trim()) {
-    throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
-  }
-  const channel = await getChannelProfile(username, "");
-  if (!channel || !channel.length) {
-    return sendApiResponse({
-      res,
-      data: null,
-      message: "User channel not found",
-      statusCode: StatusCode.OK,
-    });
-  }
-  return sendApiResponse({
-    res,
-    data: channel[0],
-    message: "User channel fetched successfully",
-    statusCode: StatusCode.OK,
-  });
-});
-
-const getUserWatchHistory = catchAsync(async (req, res) => {
-  const user = await User.aggregate([
-    {
-      $match: {
-        _id: new mongoose.Types.ObjectId(req.user._id),
-      },
-    },
-    {
-      $lookup: {
-        from: "videos",
-        localField: "watchHistory",
-        foreignField: "_id",
-        as: "watchHistory",
-        pipeline: [
-          {
-            $lookup: {
-              from: "users",
-              localField: "owner",
-              foreignField: "_id",
-              as: "owner",
-              pipeline: [
-                {
-                  $project: {
-                    fullName: 1,
-                    username: 1,
-                    avatar: 1,
-                    email: 1,
-                  },
-                },
-              ],
-            },
-          },
-          {
-            $addFields: {
-              owner: {
-                $arrayElemAt: ["$owner", 0],
-              },
-            },
-          },
-        ],
-      },
-    },
-  ]);
-  if (!user || !user.length) {
-    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
-  }
-  return sendApiResponse({
-    res,
-    data: user[0].watchHistory,
-    message: "User watch history fetched successfully",
     statusCode: StatusCode.OK,
   });
 });

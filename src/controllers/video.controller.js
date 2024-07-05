@@ -5,6 +5,7 @@ import { catchAsync } from "../utils/catchAsync.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
+import { getUserIdFromToken } from "../utils/jwt.js";
 
 const getAllContentsByType = catchAsync(async (req, res) => {
   const limit = req.query.limit || 10;
@@ -62,6 +63,8 @@ const getAllContentsByType = catchAsync(async (req, res) => {
 
 const getVideoById = catchAsync(async (req, res) => {
   if (!req.params.id) throw new Error("Id is required");
+  let userId = getUserIdFromToken(req);
+  if (userId) userId = new mongoose.Types.ObjectId(userId);
   const video = await Video.aggregate([
     { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
     {
@@ -78,13 +81,14 @@ const getVideoById = catchAsync(async (req, res) => {
               subscribersCount: { $size: "$subscribers" },
               isSubscribed: {
                 $cond: {
-                  if: { $in: [req?.user?._id, "$subscribers"] },
+                  if: { $in: [userId, "$subscribers.subscriber"] },
                   then: true,
                   else: false,
                 },
               },
             },
           },
+          { $project: { subscribers: 0 } },
         ],
       },
     },
@@ -95,13 +99,21 @@ const getVideoById = catchAsync(async (req, res) => {
         foreignField: "video",
         as: "comments",
         pipeline: [
-          { $lookup: { from: "users", localField: "owner", foreignField: "_id", as: "owner" } },
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [{ $project: { password: 0, refreshToken: 0, watchHistory: 0 } }],
+            },
+          },
           { $lookup: { from: "likes", localField: "_id", foreignField: "comment", as: "likes" } },
           {
             $addFields: {
               owner: { $arrayElemAt: ["$owner", 0] },
               likes: { $size: "$likes" },
-              isLiked: { $cond: { if: { $in: [req?.user?._id, "$likes.likedBy"] }, then: true, else: false } },
+              isLiked: { $cond: { if: { $in: [userId, "$likes.likedBy"] }, then: true, else: false } },
             },
           },
           { $sort: { createdAt: -1 } },
@@ -112,11 +124,14 @@ const getVideoById = catchAsync(async (req, res) => {
     {
       $addFields: {
         likes: { $size: "$likes" },
-        isLiked: { $cond: { if: { $in: [req?.user?._id, "$likes.likedBy"] }, then: true, else: false } },
+        isLiked: {
+          $cond: { if: { $in: [userId, "$likes.likedBy"] }, then: true, else: false },
+        },
       },
     },
     { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
   ]);
+
   if (!video || video.length === 0 || !video?.[0]?.isPublished)
     return sendApiResponse({
       res,
@@ -132,10 +147,16 @@ const getVideoById = catchAsync(async (req, res) => {
   });
 });
 
-const getVideoByUsername = catchAsync(async (req, res) => {
-  if (!req.params.username) throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
-  const videos = await Video.find({ owner: req.params.username, isPublished: true, type: "video" });
-  if (!videos)
+const getVideoByUserId = catchAsync(async (req, res) => {
+  if (!req.params.id) throw new ApiError(StatusCode.BAD_REQUEST, "User id is required");
+  const type = req.query.type || "video";
+  const totalVideos = await Video.countDocuments({ owner: req.params.id, isPublished: true, type });
+  const videos = await Video.find({ owner: req.params.id, isPublished: true, type })
+    .sort({ createdAt: -1 })
+    .populate("owner", "-password -refreshToken -watchHistory")
+    .exec();
+
+  if (!videos || videos.length === 0)
     return sendApiResponse({
       res,
       statusCode: StatusCode.OK,
@@ -145,15 +166,19 @@ const getVideoByUsername = catchAsync(async (req, res) => {
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: videos,
+    data: {
+      data: videos,
+      total: totalVideos,
+    },
     message: "Videos found successfully",
   });
 });
 
 const getAllUserContentByType = catchAsync(async (req, res) => {
   const type = req.query.type || "video";
+  const userId = new mongoose.Types.ObjectId(req.user._id);
   const videos = await Video.aggregate([
-    { $match: { owner: new mongoose.Types.ObjectId(req.user._id), type } },
+    { $match: { owner: userId, type } },
 
     { $lookup: { from: "comments", localField: "_id", foreignField: "video", as: "comments" } },
     { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
@@ -163,7 +188,7 @@ const getAllUserContentByType = catchAsync(async (req, res) => {
         likes: { $size: "$likes" },
         comments: { $size: "$comments" },
         isLiked: {
-          $cond: { if: { $in: [req.user._id, "$likes.likedBy"] }, then: true, else: false },
+          $cond: { if: { $in: [userId, "$likes.likedBy"] }, then: true, else: false },
         },
       },
     },
@@ -290,7 +315,7 @@ export const videoController = {
   deleteVideo,
   getVideoById,
   getAllContentsByType,
-  getVideoByUsername,
+  getVideoByUserId,
   getAllUserContentByType,
   updateVideo,
   makeACopy,
