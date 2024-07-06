@@ -3,7 +3,6 @@ import { subscriptionsController } from "../controllers/subscriptions.controller
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
-router.route("/get-all-channel-subscriber").get(verifyJWT, subscriptionsController.getChannelAllSubscriber);
 router.route("/get-all-subscribed-channel").get(verifyJWT, subscriptionsController.getAllSubscribedChannel);
 router
   .route("/create-subscribe-and-unsubscribe")

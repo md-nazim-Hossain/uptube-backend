@@ -61,6 +61,11 @@ const getChannelProfile = async (req, username, id) => {
         localField: "_id",
         foreignField: "owner",
         as: "videos",
+        pipeline: [
+          {
+            $sort: { createdAt: -1 },
+          },
+        ],
       },
     },
     {
@@ -74,12 +79,19 @@ const getChannelProfile = async (req, username, id) => {
             else: false,
           },
         },
-        totalVideos: { $size: "$videos" },
+        totalVideos: {
+          $filter: {
+            input: "$videos",
+            as: "video",
+            cond: { $eq: ["$$video.type", "video"] },
+          },
+        },
         totalViews: {
           $sum: "$videos.views",
         },
       },
     },
+
     {
       $project: {
         fullName: 1,
@@ -91,7 +103,7 @@ const getChannelProfile = async (req, username, id) => {
         email: 1,
         coverImage: 1,
         description: 1,
-        totalVideos: 1,
+        totalVideos: { $size: "$totalVideos" },
         totalViews: 1,
         createdAt: 1,
         isVerified: 1,
@@ -153,6 +165,31 @@ const registerUser = catchAsync(async (req, res) => {
     res,
     message: "User registered successfully",
     statusCode: StatusCode.CREATED,
+  });
+});
+
+const verifyUser = catchAsync(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Email is required");
+  }
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+  if (user.isVerified) {
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      message: "User already verified",
+    });
+  }
+  user.isVerified = true;
+  await user.save();
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    message: "User verified successfully",
   });
 });
 
@@ -349,6 +386,73 @@ const getUserChannelProfile = catchAsync(async (req, res) => {
   });
 });
 
+const getAllChannelSubscriber = catchAsync(async (req, res) => {
+  const userId = new mongoose.Types.ObjectId(req.user._id);
+  const channel = await User.aggregate([
+    {
+      $match: {
+        _id: userId,
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "subscriber",
+              foreignField: "_id",
+              as: "subscriber",
+              pipeline: [
+                {
+                  $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField: "channel",
+                    as: "channelSubscribers",
+                  },
+                },
+                {
+                  $addFields: {
+                    isSubscribed: {
+                      $cond: {
+                        if: { $in: [userId, "$channelSubscribers.subscriber"] },
+                        then: true,
+                        else: false,
+                      },
+                    },
+                  },
+                },
+                { $project: { password: 0, refreshToken: 0, watchHistory: 0, channelSubscribers: 0 } },
+              ],
+            },
+          },
+          { $addFields: { subscriber: { $arrayElemAt: ["$subscriber", 0] } } },
+        ],
+      },
+    },
+    { $project: { subscribers: 1 } },
+  ]);
+  if (!channel || !channel.length || !channel[0]?.subscribers?.length) {
+    return sendApiResponse({
+      res,
+      data: null,
+      message: "User channel not found",
+      statusCode: StatusCode.OK,
+    });
+  }
+  return sendApiResponse({
+    res,
+    data: channel[0].subscribers,
+    message: "User channel fetched successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
 const getUserWatchHistory = catchAsync(async (req, res) => {
   const user = await User.aggregate([
     {
@@ -493,6 +597,7 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
 
 export const userController = {
   registerUser,
+  verifyUser,
   loginUser,
   logoutUser,
   refreshAccessToken,
@@ -502,6 +607,7 @@ export const userController = {
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
+  getAllChannelSubscriber,
   getUserWatchHistory,
   checkUserNameIsUnique,
   getCurrentUserProfile,

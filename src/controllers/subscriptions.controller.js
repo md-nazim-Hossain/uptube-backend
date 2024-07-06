@@ -4,19 +4,6 @@ import { sendApiResponse } from "../utils/ApiResponse.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import StatusCode from "http-status-codes";
 
-const getChannelAllSubscriber = catchAsync(async (req, res) => {
-  const subscriptions = await Subscription.find({ channel: req.user._id }).populate(
-    "subscriber",
-    "-password -refreshToken -watchHistory"
-  );
-  return sendApiResponse({
-    res,
-    statusCode: StatusCode.OK,
-    data: subscriptions,
-    message: "Subscriptions found successfully",
-  });
-});
-
 const getAllSubscribedChannel = catchAsync(async (req, res) => {
   const subscriptions = await Subscription.find({ subscriber: req.user._id }).populate(
     "channel",
@@ -54,7 +41,6 @@ const createSubscribeAndUnsubscribe = catchAsync(async (req, res) => {
 });
 
 export const subscriptionsController = {
-  getChannelAllSubscriber,
   getAllSubscribedChannel,
   createSubscribeAndUnsubscribe,
 };
