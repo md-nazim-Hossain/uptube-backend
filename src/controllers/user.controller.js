@@ -329,28 +329,6 @@ const changeCurrentPassword = catchAsync(async (req, res) => {
   });
 });
 
-const getCurrentUserProfile = catchAsync(async (req, res) => {
-  if (!req?.user) {
-    throw new ApiError(StatusCode.UNAUTHORIZED, "Unauthorized request");
-  }
-  // const profile = await getChannelProfile("", req.user._id);
-  const profile = [];
-  if (!profile || !profile.length) {
-    return sendApiResponse({
-      res,
-      data: null,
-      message: "User profile not found",
-      statusCode: StatusCode.OK,
-    });
-  }
-  return sendApiResponse({
-    res,
-    data: profile[0],
-    message: "User profile fetched successfully",
-    statusCode: StatusCode.OK,
-  });
-});
-
 const getCurrentUser = catchAsync(async (req, res) => {
   const user = await User.findById(req.user._id).select("-password -refreshToken -watchHistory -likeVideos");
   if (!user) {
@@ -610,6 +588,5 @@ export const userController = {
   getAllChannelSubscriber,
   getUserWatchHistory,
   checkUserNameIsUnique,
-  getCurrentUserProfile,
   get,
 };

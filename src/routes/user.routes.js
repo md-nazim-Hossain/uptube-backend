@@ -18,7 +18,6 @@ router.route("/get").get(userController.get);
 router.route("/:username/channel-profile").get(userController.getUserChannelProfile);
 
 // Protect all routes after this middleware
-router.route("/profile").get(verifyJWT, userController.getCurrentUserProfile);
 router.route("/user").get(verifyJWT, userController.getCurrentUser);
 router.route("/get-all-channel-subscriber").get(verifyJWT, userController.getAllChannelSubscriber);
 router.route("/watch-history").get(verifyJWT, userController.getUserWatchHistory);
