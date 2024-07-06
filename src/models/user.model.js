@@ -67,6 +67,9 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    lastPasswordChange: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

@@ -12,9 +12,11 @@ export const config = {
   },
   jwt: {
     access_token_secret: process.env.JWT_ACCESS_TOKEN_SECRET,
-    access_token_expiry: process.env.JWT_ACCESS_TOKEN_EXPIRY || "1d",
+    access_token_expiry: "1d",
     refresh_token_secret: process.env.JWT_REFRESH_TOKEN_SECRET,
-    refresh_token_expiry: process.env.JWT_ACCESS_TOKEN_EXPIRY || "365d",
+    refresh_token_expiry: "365d",
+    reset_password_token_secret: process.env.JWT_RESET_PASSWORD_TOKEN_SECRET,
+    reset_password_token_expiry: "1h",
   },
   bcrypt: {
     salt: +process.env.BCRYPT_SALT || 10,

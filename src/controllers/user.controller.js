@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 import mongoose from "mongoose";
 import { getUserIdFromToken } from "../utils/jwt.js";
+import bcrypt from "bcrypt";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -591,6 +592,40 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
   });
 });
 
+const resetPassword = catchAsync(async (req, res) => {
+  const token = req.query?.token;
+  const { password } = req.body;
+  if (!password) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Password is required");
+  }
+  if (!token) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Token is required");
+  }
+  const verifyToken = jwt.verify(token, config.jwt.reset_password_token_secret);
+  if (!verifyToken || !verifyToken.email) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Invalid token");
+  }
+
+  const user = await User.findOne({ email: verifyToken.email });
+  if (!user) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+
+  if (!user.isVerified) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "User is not verified");
+  }
+
+  user.password = await bcrypt.hash(password, config.bcrypt.salt);
+  user.lastPasswordChange = new Date().toISOString();
+  await user.save();
+
+  return sendApiResponse({
+    res,
+    message: "Password reset successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
 export const userController = {
   registerUser,
   verifyUser,
@@ -606,5 +641,6 @@ export const userController = {
   getAllChannelSubscriber,
   getUserWatchHistory,
   checkUserNameIsUnique,
+  resetPassword,
   get,
 };
