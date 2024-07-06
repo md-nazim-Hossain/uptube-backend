@@ -4,6 +4,8 @@ export const config = {
   port: process.env.PORT || 5000,
   db_url: process.env.DATABASE_URL,
   cors_origin: "https://up-tube.vercel.app",
+  resend_api_key: process.env.RESEND_API_KEY,
+  from_email: "UPTube <supportuptube@gmail.com>",
   constants: {
     db_name: DB_NAME,
     limit: LIMIT,

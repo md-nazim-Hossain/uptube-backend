@@ -27,6 +27,9 @@ const userSchema = new Schema(
       trim: true,
       index: true,
     },
+    country: {
+      type: String,
+    },
     description: {
       type: String,
       trim: true,
@@ -51,6 +54,14 @@ const userSchema = new Schema(
     },
     refreshToken: {
       type: String,
+    },
+    verifyCode: {
+      type: String,
+      required: true,
+    },
+    verifyCodeExpiry: {
+      type: Number,
+      required: true,
     },
     isVerified: {
       type: Boolean,

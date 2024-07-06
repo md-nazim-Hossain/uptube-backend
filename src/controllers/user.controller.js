@@ -121,8 +121,10 @@ const registerUser = catchAsync(async (req, res) => {
   } else if (!email.includes("@") || !email.includes(".")) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Email is not valid");
   }
-
-  const userIsExist = await User.findOne({ $or: [{ email }, { username }] });
+  const verifyCode = Math.floor(100000 + Math.random() * 900000);
+  const verifyCodeExpiry = Date.now() + 10 * 60 * 1000;
+  const addPrefixInUserName = username?.startsWith("@") ? username : "@" + username;
+  const userIsExist = await User.findOne({ $or: [{ email }, { username: addPrefixInUserName }] });
   if (userIsExist) {
     throw new ApiError(409, "User already exists with this email or username");
   }
@@ -144,12 +146,14 @@ const registerUser = catchAsync(async (req, res) => {
   //   throw new ApiError(StatusCode.BAD_REQUEST, "Failed to upload images");
   // }
   const user = await User.create({
-    username: "@" + username.toLowerCase(),
+    username: addPrefixInUserName?.toLowerCase(),
     email,
     password,
     fullName,
     avatar: avatar?.url || "",
     coverImage: coverImage?.url || "",
+    verifyCode,
+    verifyCodeExpiry,
   });
 
   if (!user || !user._id) {
@@ -158,8 +162,8 @@ const registerUser = catchAsync(async (req, res) => {
   user.password = undefined;
   user.refreshToken = undefined;
   user.watchHistory = undefined;
-  user.likeVideos = undefined;
-
+  user.verifyCodeExpiry = undefined;
+  user.verifyCode = undefined;
   return sendApiResponse({
     data: user,
     res,
@@ -169,7 +173,7 @@ const registerUser = catchAsync(async (req, res) => {
 });
 
 const verifyUser = catchAsync(async (req, res) => {
-  const { email } = req.body;
+  const { email, verifyCode } = req.body;
   if (!email) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Email is required");
   }
@@ -177,6 +181,14 @@ const verifyUser = catchAsync(async (req, res) => {
   if (!user) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
+
+  if (user.verifyCode !== verifyCode) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Invalid verification code");
+  }
+  if (user.verifyCodeExpiry < Date.now()) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Verification code expired");
+  }
+
   if (user.isVerified) {
     return sendApiResponse({
       res,
@@ -185,6 +197,8 @@ const verifyUser = catchAsync(async (req, res) => {
     });
   }
   user.isVerified = true;
+  user.verifyCode = undefined;
+  user.verifyCodeExpiry = undefined;
   await user.save();
   return sendApiResponse({
     res,
@@ -195,18 +209,22 @@ const verifyUser = catchAsync(async (req, res) => {
 
 const checkUserNameIsUnique = catchAsync(async (req, res) => {
   const { username } = req.params;
-  const user = await User.findOne({ username: "@" + username, isVerified: true });
+  if (!username) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Username is required");
+  }
+  const addPrefixInUserName = username?.startsWith("@") ? username : "@" + username;
+  const user = await User.findOne({ username: addPrefixInUserName.toLowerCase(), isVerified: true });
   if (!user) {
     return sendApiResponse({
       res,
       statusCode: StatusCode.OK,
-      message: "User not found",
+      message: "username is available",
     });
   }
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    message: "User found",
+    message: "username is not available",
   });
 });
 

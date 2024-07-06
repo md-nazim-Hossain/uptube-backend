@@ -11,9 +11,9 @@ router.route("/register").post(
   ]),
   userController.registerUser
 );
-router.route("/verify-user").get(userController.verifyUser);
+router.route("/verify-user").post(userController.verifyUser);
 router.route("/login").post(userController.loginUser);
-router.route("/check-username-unique").get(userController.checkUserNameIsUnique);
+router.route("/check-username-unique/:username").get(userController.checkUserNameIsUnique);
 router.route("/get").get(userController.get);
 router.route("/:username/channel-profile").get(userController.getUserChannelProfile);
 
