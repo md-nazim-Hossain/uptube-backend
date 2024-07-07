@@ -8,7 +8,7 @@ import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 import mongoose from "mongoose";
 import { getUserIdFromToken } from "../utils/jwt.js";
-import bcrypt from "bcrypt";
+import { sendEmail } from "../utils/send-email.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -593,8 +593,7 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
 });
 
 const resetPassword = catchAsync(async (req, res) => {
-  const token = req.query?.token;
-  const { password } = req.body;
+  const { password, token } = req.body;
   if (!password) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Password is required");
   }
@@ -603,7 +602,7 @@ const resetPassword = catchAsync(async (req, res) => {
   }
   const verifyToken = jwt.verify(token, config.jwt.reset_password_token_secret);
   if (!verifyToken || !verifyToken.email) {
-    throw new ApiError(StatusCode.BAD_REQUEST, "Invalid token");
+    throw new ApiError(StatusCode.BAD_REQUEST, "Invalid token or expired");
   }
 
   const user = await User.findOne({ email: verifyToken.email });
@@ -615,13 +614,51 @@ const resetPassword = catchAsync(async (req, res) => {
     throw new ApiError(StatusCode.BAD_REQUEST, "User is not verified");
   }
 
-  user.password = await bcrypt.hash(password, config.bcrypt.salt);
+  user.password = password;
   user.lastPasswordChange = new Date().toISOString();
   await user.save();
 
   return sendApiResponse({
     res,
     message: "Password reset successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const forgotPassword = catchAsync(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Email is required");
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+
+  if (!user.isVerified) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "User is not verified");
+  }
+
+  const token = jwt.sign({ email }, config.jwt.reset_password_token_secret, {
+    expiresIn: "10m",
+  });
+  const resetPasswordLink = `${config.clientUrl}/reset-password?token=${token}`;
+  const { error, data } = await sendEmail(
+    email,
+    "Reset Password",
+    `<div>
+    Click here to reset your password: <a target="_blank" href="${resetPasswordLink}">Reset Password</a></div>`
+  );
+
+  if (error) {
+    console.log(error);
+    throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to send email");
+  }
+  return sendApiResponse({
+    res,
+    data: token,
+    message: "Password reset link sent successfully",
     statusCode: StatusCode.OK,
   });
 });
@@ -642,5 +679,6 @@ export const userController = {
   getUserWatchHistory,
   checkUserNameIsUnique,
   resetPassword,
+  forgotPassword,
   get,
 };
