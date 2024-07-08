@@ -9,15 +9,15 @@ const app = express();
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
 app.use(express.json({ limit: config.constants.limit }));
-app.use(cors({ origin: config.cors_origin }));
+app.use(cors({ origin: config.cors_origin, credentials: true }));
 app.use(cookieParser());
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", config.cors_origin);
-  res.setHeader("Access-Control-Allow-Methods", "*");
-  res.setHeader("Access-Control-Allow-Headers", "*");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  next();
-});
+// app.use((req, res, next) => {
+//   res.setHeader("Access-Control-Allow-Origin", config.cors_origin);
+//   res.setHeader("Access-Control-Allow-Methods", "*");
+//   res.setHeader("Access-Control-Allow-Headers", "*");
+//   res.setHeader("Access-Control-Allow-Credentials", "true");
+//   next();
+// });
 
 //routes import ;
 import userRoutes from "./routes/user.routes.js";
