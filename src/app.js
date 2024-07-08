@@ -4,13 +4,20 @@ import cookieParser from "cookie-parser";
 import { config } from "./config/index.js";
 const app = express();
 
-const allowlist = [config.cors_origin, "http://localhost:3000"];
 // =========== app configurations ============== //
+
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
 app.use(express.json({ limit: config.constants.limit }));
-app.use(cors({ origin: "*", credentials: true, optionsSuccessStatus: 200 }));
+app.use(cors({ origin: config.cors_origin }));
 app.use(cookieParser());
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", config.cors_origin);
+  res.setHeader("Access-Control-Allow-Methods", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  next();
+});
 
 //routes import ;
 import userRoutes from "./routes/user.routes.js";
