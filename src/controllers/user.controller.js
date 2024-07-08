@@ -165,6 +165,22 @@ const registerUser = catchAsync(async (req, res) => {
   user.watchHistory = undefined;
   user.verifyCodeExpiry = undefined;
   user.verifyCode = undefined;
+  const { error } = await sendEmail(
+    email,
+    "Verify your account",
+    `<div>
+      <h1>Welcome, ${fullName}</h1>
+      <br/> </br>
+      <p>You are registered successfully on UpTube.Please verify your account for the going to be a part of UpTube.</p>
+      <p>Your verification code is: ${verifyCode}</p>
+      <br/<br/>
+      <p>Thank you.</p>
+    </div>`
+  );
+
+  if (error) {
+    throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to send email.Please contact us our support team");
+  }
   return sendApiResponse({
     data: user,
     res,
@@ -329,25 +345,6 @@ const refreshAccessToken = catchAsync(async (req, res) => {
     });
 });
 
-const changeCurrentPassword = catchAsync(async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-  const user = await User.findById(req.user._id);
-  if (!user) {
-    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
-  }
-  if (!(await user.isPasswordCorrect(currentPassword))) {
-    throw new ApiError(StatusCode.UNAUTHORIZED, "Current password is incorrect");
-  }
-  user.password = newPassword;
-  await user.save({ validateBeforeSave: false });
-  return sendApiResponse({
-    res,
-    data: null,
-    message: "Password changed successfully",
-    statusCode: StatusCode.OK,
-  });
-});
-
 const getCurrentUser = catchAsync(async (req, res) => {
   const user = await User.findById(req.user._id).select("-password -refreshToken -watchHistory -likeVideos");
   if (!user) {
@@ -505,9 +502,9 @@ const getUserWatchHistory = catchAsync(async (req, res) => {
 });
 
 const updateUserAccountDetails = catchAsync(async (req, res) => {
-  const { fullName, email } = req.body;
-  if (!(fullName || email)) {
-    throw new ApiError(StatusCode.BAD_REQUEST, "Full name and email are required");
+  const { fullName, email, description } = req.body;
+  if (!(fullName || email || description)) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "FullName, email or description are required");
   }
   const user = await User.findByIdAndUpdate(
     req.user._id,
@@ -515,12 +512,13 @@ const updateUserAccountDetails = catchAsync(async (req, res) => {
       $set: {
         fullName,
         email,
+        description,
       },
     },
     {
       new: true,
     }
-  ).select("-password -refreshToken");
+  ).select("-password -refreshToken -watchHistory -lastPasswordChange");
 
   if (!user) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
@@ -553,7 +551,7 @@ const updateUserAvatar = catchAsync(async (req, res) => {
     {
       new: true,
     }
-  ).select("-password -refreshToken");
+  ).select("-password -refreshToken -watchHistory");
   return sendApiResponse({
     res,
     data: user,
@@ -582,7 +580,7 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
     {
       new: true,
     }
-  ).select("-password -refreshToken");
+  ).select("-password -refreshToken -watchHistory -lastPasswordChange");
 
   return sendApiResponse({
     res,
@@ -652,13 +650,38 @@ const forgotPassword = catchAsync(async (req, res) => {
   );
 
   if (error) {
-    console.log(error);
     throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to send email");
   }
   return sendApiResponse({
     res,
-    data: token,
+    data: data,
     message: "Password reset link sent successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const changeCurrentPassword = catchAsync(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword && !newPassword) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Old and new password is required");
+  }
+
+  const user = await User.findById(req.user._id).select("+password");
+  if (!user) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+
+  if (!(await user.isPasswordCorrect(currentPassword))) {
+    throw new ApiError(StatusCode.UNAUTHORIZED, "Current password is incorrect");
+  }
+
+  user.password = newPassword;
+  user.lastPasswordChange = new Date().toISOString();
+  await user.save({ validateBeforeSave: false });
+
+  return sendApiResponse({
+    res,
+    message: "Password updated successfully",
     statusCode: StatusCode.OK,
   });
 });
