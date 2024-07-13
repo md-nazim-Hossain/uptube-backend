@@ -2,9 +2,10 @@ import { Router } from "express";
 import { videoController } from "../controllers/video.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
+import { cache } from "../middlewares/cache.middleware.js";
 
 const router = Router();
-router.route("/get-all-content-by-type").get(videoController.getAllContentsByType);
+router.route("/get-all-content-by-type").get(cache, videoController.getAllContentsByType);
 router.route("/get-video/:id").get(videoController.getVideoById);
 router.route("/get-video-by-user-id/:id").get(videoController.getVideoByUserId);
 

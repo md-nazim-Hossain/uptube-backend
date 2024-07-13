@@ -3,7 +3,8 @@ import { DB_NAME, LIMIT } from "../constants.js";
 export const config = {
   port: process.env.PORT || 5000,
   db_url: process.env.DATABASE_URL,
-  cors_origin: "https://up-tube.vercel.app",
+  // cors_origin: "https://up-tube.vercel.app",
+  cors_origin: "http://localhost:3000",
   resend_api_key: process.env.RESEND_API_KEY,
   from_email: "Acme <onboarding@resend.dev>",
   clientUrl: process.env.NODE_ENV === "production" ? "https://up-tube.vercel.app" : "http://localhost:3000",

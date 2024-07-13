@@ -6,6 +6,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
 import { getUserIdFromToken } from "../utils/jwt.js";
+import { redisClient } from "../db/redisClient.js";
 
 const getAllContentsByType = catchAsync(async (req, res) => {
   const limit = req.query.limit || 10;
@@ -50,6 +51,7 @@ const getAllContentsByType = catchAsync(async (req, res) => {
       },
       message: "No content found",
     });
+  await redisClient.set(req.originalUrl, JSON.stringify({ data: content, total: totalContent }), { EX: 21600 });
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
