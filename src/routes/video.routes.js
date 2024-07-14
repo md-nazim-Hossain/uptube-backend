@@ -6,6 +6,7 @@ import { cache } from "../middlewares/cache.middleware.js";
 
 const router = Router();
 router.route("/get-all-content-by-type").get(cache, videoController.getAllContentsByType);
+router.route("/get-all-shorts").get(cache, videoController.getAllShorts);
 router.route("/get-video/:id").get(videoController.getVideoById);
 router.route("/get-video-by-user-id/:id").get(videoController.getVideoByUserId);
 

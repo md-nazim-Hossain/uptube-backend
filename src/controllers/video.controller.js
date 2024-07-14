@@ -63,6 +63,89 @@ const getAllContentsByType = catchAsync(async (req, res) => {
   });
 });
 
+const getAllShorts = catchAsync(async (req, res) => {
+  let userId = getUserIdFromToken(req);
+  if (userId) userId = new mongoose.Types.ObjectId(userId);
+  const video = await Video.aggregate([
+    { $match: { type: "short", isPublished: true } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          { $lookup: { from: "subscriptions", localField: "_id", foreignField: "channel", as: "subscribers" } },
+          { $project: { password: 0, refreshToken: 0, accessToken: 0, watchHistory: 0 } },
+          {
+            $addFields: {
+              subscribersCount: { $size: "$subscribers" },
+              isSubscribed: {
+                $cond: {
+                  if: { $in: [userId, "$subscribers.subscriber"] },
+                  then: true,
+                  else: false,
+                },
+              },
+            },
+          },
+          { $project: { subscribers: 0 } },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "video",
+        as: "comments",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [{ $project: { password: 0, refreshToken: 0, watchHistory: 0 } }],
+            },
+          },
+          { $lookup: { from: "likes", localField: "_id", foreignField: "comment", as: "likes" } },
+          {
+            $addFields: {
+              owner: { $arrayElemAt: ["$owner", 0] },
+              likes: { $size: "$likes" },
+              isLiked: { $cond: { if: { $in: [userId, "$likes.likedBy"] }, then: true, else: false } },
+            },
+          },
+          { $sort: { createdAt: -1 } },
+        ],
+      },
+    },
+    { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
+    {
+      $addFields: {
+        likes: { $size: "$likes" },
+        isLiked: {
+          $cond: { if: { $in: [userId, "$likes.likedBy"] }, then: true, else: false },
+        },
+      },
+    },
+    { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
+  ]);
+  if (!video || video.length === 0)
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      data: [],
+      message: "No content found",
+    });
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: video,
+    message: "Content found successfully",
+  });
+});
 const getVideoById = catchAsync(async (req, res) => {
   if (!req.params.id) throw new Error("Id is required");
   let userId = getUserIdFromToken(req);
@@ -321,4 +404,5 @@ export const videoController = {
   getAllUserContentByType,
   updateVideo,
   makeACopy,
+  getAllShorts,
 };
