@@ -294,6 +294,35 @@ const getAllUserContentByType = catchAsync(async (req, res) => {
   });
 });
 
+const getAllSearchContent = catchAsync(async (req, res) => {
+  const { search_query } = req.query;
+  if (!search_query?.trim()) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Search query is required");
+  }
+  const searchQuery = search_query.trim();
+  const q = new RegExp(searchQuery, "i");
+  const content = await Video.find({
+    $or: [{ title: { $regex: q } }, { description: { $regex: q } }],
+    isPublished: true,
+  })
+    .populate("owner", "-password -refreshToken -watchHistory -lastPasswordChange")
+    .sort({ createdAt: -1 });
+
+  if (!content || content.length === 0)
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      data: [],
+      message: "No videos found",
+    });
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: content,
+    message: "Videos found successfully",
+  });
+});
+
 const uploadVideo = catchAsync(async (req, res) => {
   const { title, description, isPublished } = req.body;
   if (!title || !description) {
@@ -405,4 +434,5 @@ export const videoController = {
   updateVideo,
   makeACopy,
   getAllShorts,
+  getAllSearchContent,
 };
