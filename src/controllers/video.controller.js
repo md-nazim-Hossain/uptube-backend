@@ -6,7 +6,7 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
 import { getUserIdFromToken } from "../utils/jwt.js";
-import { redisClient } from "../db/redisClient.js";
+// import { redisClient } from "../db/redisClient.js";
 
 const getAllContentsByType = catchAsync(async (req, res) => {
   const limit = req.query.limit || 10;
@@ -51,7 +51,7 @@ const getAllContentsByType = catchAsync(async (req, res) => {
       },
       message: "No content found",
     });
-  await redisClient.set(req.originalUrl, JSON.stringify({ data: content, total: totalContent }), { EX: 21600 });
+  // await redisClient.set(req.originalUrl, JSON.stringify({ data: content, total: totalContent }), { EX: 21600 });
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
@@ -93,34 +93,7 @@ const getAllShorts = catchAsync(async (req, res) => {
         ],
       },
     },
-    {
-      $lookup: {
-        from: "comments",
-        localField: "_id",
-        foreignField: "video",
-        as: "comments",
-        pipeline: [
-          {
-            $lookup: {
-              from: "users",
-              localField: "owner",
-              foreignField: "_id",
-              as: "owner",
-              pipeline: [{ $project: { password: 0, refreshToken: 0, watchHistory: 0 } }],
-            },
-          },
-          { $lookup: { from: "likes", localField: "_id", foreignField: "comment", as: "likes" } },
-          {
-            $addFields: {
-              owner: { $arrayElemAt: ["$owner", 0] },
-              likes: { $size: "$likes" },
-              isLiked: { $cond: { if: { $in: [userId, "$likes.likedBy"] }, then: true, else: false } },
-            },
-          },
-          { $sort: { createdAt: -1 } },
-        ],
-      },
-    },
+    { $sort: { createdAt: -1 } },
     { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
     {
       $addFields: {
@@ -146,6 +119,7 @@ const getAllShorts = catchAsync(async (req, res) => {
     message: "Content found successfully",
   });
 });
+
 const getVideoById = catchAsync(async (req, res) => {
   if (!req.params.id) throw new Error("Id is required");
   let userId = getUserIdFromToken(req);
@@ -160,7 +134,7 @@ const getVideoById = catchAsync(async (req, res) => {
         as: "owner",
         pipeline: [
           { $lookup: { from: "subscriptions", localField: "_id", foreignField: "channel", as: "subscribers" } },
-          { $project: { password: 0, refreshToken: 0, accessToken: 0, watchHistory: 0 } },
+          { $project: { password: 0, refreshToken: 0, accessToken: 0, watchHistory: 0, lastPasswordChange: 0 } },
           {
             $addFields: {
               subscribersCount: { $size: "$subscribers" },
@@ -177,34 +151,7 @@ const getVideoById = catchAsync(async (req, res) => {
         ],
       },
     },
-    {
-      $lookup: {
-        from: "comments",
-        localField: "_id",
-        foreignField: "video",
-        as: "comments",
-        pipeline: [
-          {
-            $lookup: {
-              from: "users",
-              localField: "owner",
-              foreignField: "_id",
-              as: "owner",
-              pipeline: [{ $project: { password: 0, refreshToken: 0, watchHistory: 0 } }],
-            },
-          },
-          { $lookup: { from: "likes", localField: "_id", foreignField: "comment", as: "likes" } },
-          {
-            $addFields: {
-              owner: { $arrayElemAt: ["$owner", 0] },
-              likes: { $size: "$likes" },
-              isLiked: { $cond: { if: { $in: [userId, "$likes.likedBy"] }, then: true, else: false } },
-            },
-          },
-          { $sort: { createdAt: -1 } },
-        ],
-      },
-    },
+
     { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
     {
       $addFields: {
@@ -323,6 +270,17 @@ const getAllSearchContent = catchAsync(async (req, res) => {
   });
 });
 
+const updateViewCount = catchAsync(async (req, res) => {
+  const video = await Video.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }, { new: true });
+  if (!video) throw new ApiError("Video not found");
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: video,
+    message: "Video updated successfully",
+  });
+});
+
 const uploadVideo = catchAsync(async (req, res) => {
   const { title, description, isPublished } = req.body;
   if (!title || !description) {
@@ -435,4 +393,5 @@ export const videoController = {
   makeACopy,
   getAllShorts,
   getAllSearchContent,
+  updateViewCount,
 };

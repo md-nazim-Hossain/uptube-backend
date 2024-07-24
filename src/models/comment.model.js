@@ -23,12 +23,17 @@ const commentsSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    // replies: [
-    //   {
-    //     type: Schema.Types.ObjectId,
-    //     ref: "Comment",
-    //   },
-    // ],
+    parentComment: {
+      type: Schema.Types.ObjectId,
+      ref: "Comment",
+      default: null,
+    },
+    replies: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Comment",
+      },
+    ],
     lastEditedAt: {
       type: Date,
     },
@@ -37,5 +42,14 @@ const commentsSchema = new Schema(
     timestamps: true,
   }
 );
+
+commentsSchema.pre("find", function (next) {
+  this.populate({
+    path: "replies",
+    options: { sort: { createdAt: -1 } },
+    populate: { path: "owner", select: "-refreshToken -password -lastPasswordChange -wathcHistory" },
+  });
+  next();
+});
 
 export const Comment = model("Comment", commentsSchema);
