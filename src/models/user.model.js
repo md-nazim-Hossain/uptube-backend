@@ -74,7 +74,6 @@ const userSchema = new Schema(
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-  console.log("pre hooks", this.password);
   this.password = await bcrypt.hash(this.password, config.bcrypt.salt);
   next();
 });
@@ -94,7 +93,7 @@ userSchema.methods.generateAccessToken = function () {
 };
 
 userSchema.methods.generateRefreshToken = function () {
-  return jwt.sign({ _id: this._id, email: this.email }, config.jwt.refresh_token_secret, {
+  return jwt.sign({ _id: this._id, email: this.email, username: this.username }, config.jwt.refresh_token_secret, {
     expiresIn: config.jwt.refresh_token_expiry,
   });
 };

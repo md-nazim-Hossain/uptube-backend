@@ -47,7 +47,7 @@ commentsSchema.pre("find", function (next) {
   this.populate({
     path: "replies",
     options: { sort: { createdAt: -1 } },
-    populate: { path: "owner", select: "-refreshToken -password -lastPasswordChange -wathcHistory" },
+    populate: { path: "owner", select: "-refreshToken -password -lastPasswordChange -watchHistory" },
   });
   next();
 });

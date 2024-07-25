@@ -21,6 +21,7 @@ router.route("/forgot-password").post(userController.forgotPassword);
 
 // Protect all routes after this middleware
 router.route("/user").get(verifyJWT, userController.getCurrentUser);
+router.route("/get-channel-analytics").get(verifyJWT, userController.getChannelAnalytics);
 router.route("/get-all-channel-subscriber").get(verifyJWT, userController.getAllChannelSubscriber);
 router.route("/watch-history").get(verifyJWT, userController.getUserWatchHistory);
 router.route("/logout").post(verifyJWT, userController.logoutUser);

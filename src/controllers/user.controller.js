@@ -501,6 +501,90 @@ const getUserWatchHistory = catchAsync(async (req, res) => {
   });
 });
 
+const getChannelAnalytics = catchAsync(async (req, res) => {
+  const _id = new mongoose.Types.ObjectId(req.user._id);
+  const analytics = await User.aggregate([
+    {
+      $match: {
+        _id,
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "_id",
+        foreignField: "owner",
+        as: "videos",
+        pipeline: [
+          { $match: { owner: _id } },
+          {
+            $lookup: {
+              from: "likes",
+              foreignField: "video",
+              localField: "_id",
+              as: "likes",
+            },
+          },
+          {
+            $lookup: {
+              from: "comments",
+              foreignField: "video",
+              localField: "_id",
+              as: "comments",
+            },
+          },
+          { $addFields: { likes: { $size: "$likes" }, comments: { $size: "$comments" } } },
+          {
+            $sort: {
+              views: -1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+        pipeline: [{ $match: { chnnel: _id } }],
+      },
+    },
+    {
+      $project: {
+        subscribers: {
+          $size: "$subscribers",
+        },
+        totalViews: {
+          $sum: "$videos.views",
+        },
+        topVideo: { $arrayElemAt: ["$videos", 0] },
+        totalLikes: {
+          $size: "$videos.likes",
+        },
+        totalComments: {
+          $size: "$videos.comments",
+        },
+      },
+    },
+  ]);
+  if (!analytics || !analytics.length) {
+    return sendApiResponse({
+      res,
+      data: null,
+      message: "Channel Not found",
+      statusCode: StatusCode.NOT_FOUND,
+    });
+  }
+  return sendApiResponse({
+    res,
+    data: analytics[0],
+    message: "Get Channel analytics successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
 const updateUserAccountDetails = catchAsync(async (req, res) => {
   const { fullName, email, description } = req.body;
   if (!(fullName || email || description)) {
@@ -704,4 +788,5 @@ export const userController = {
   resetPassword,
   forgotPassword,
   get,
+  getChannelAnalytics,
 };

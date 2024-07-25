@@ -6,6 +6,8 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
 import { getUserIdFromToken } from "../utils/jwt.js";
+import { Comment } from "../models/comment.model.js";
+import { Like } from "../models/like.model.js";
 // import { redisClient } from "../db/redisClient.js";
 
 const getAllContentsByType = catchAsync(async (req, res) => {
@@ -372,14 +374,29 @@ const makeACopy = catchAsync(async (req, res) => {
 });
 
 const deleteVideo = catchAsync(async (req, res) => {
-  const video = await Video.findByIdAndDelete(req.params.id);
-  if (!video) throw new Error("Video not found");
-  return sendApiResponse({
-    res,
-    statusCode: StatusCode.OK,
-    data: video,
-    message: "Video deleted successfully",
-  });
+  const id = req.params.id;
+  const session = await mongoose.startSession();
+  try {
+    const video = await Video.findByIdAndDelete(id, { session });
+    if (!video.ok) throw new ApiError(StatusCode.NOT_FOUND, "Video not found");
+    const comment = await Comment.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
+    if (!comment) throw new ApiError(StatusCode.BAD_REQUEST, "Failed to video comment delete");
+
+    const likes = await Like.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
+    if (!likes) throw new ApiError(StatusCode.BAD_REQUEST, "Failed to delete video likes");
+    await session.commitTransaction();
+    await session.endSession();
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      data: video,
+      message: "Video deleted successfully",
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    await session.endSession();
+    throw error;
+  }
 });
 
 export const videoController = {
