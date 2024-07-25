@@ -474,6 +474,7 @@ const getUserWatchHistory = catchAsync(async (req, res) => {
                     username: 1,
                     avatar: 1,
                     email: 1,
+                    isVerified: 1,
                   },
                 },
               ],
@@ -581,6 +582,41 @@ const getChannelAnalytics = catchAsync(async (req, res) => {
     res,
     data: analytics[0],
     message: "Get Channel analytics successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const updateUserWatchHistory = catchAsync(async (req, res) => {
+  if (!req.query.id) throw new ApiError(StatusCode.BAD_REQUEST, "Video Id is required");
+  const videoId = new mongoose.Types.ObjectId(req.query.id);
+  const updateWatchHistory = await User.findByIdAndUpdate(req.user?._id, {
+    $addToSet: {
+      watchHistory: videoId,
+    },
+  });
+  if (!updateWatchHistory) {
+    throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  }
+  return sendApiResponse({
+    res,
+    data: null,
+    message: "Added video watch history successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const deleteUserWatchHistory = catchAsync(async (req, res) => {
+  const id = new mongoose.Types.ObjectId(req.params.id);
+  const user = await User.findByIdAndUpdate(req.user._id, {
+    $pull: {
+      watchHistory: id,
+    },
+  });
+  if (!user) throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  return sendApiResponse({
+    res,
+    data: null,
+    message: "Video remove from user watchhistory",
     statusCode: StatusCode.OK,
   });
 });
@@ -789,4 +825,6 @@ export const userController = {
   forgotPassword,
   get,
   getChannelAnalytics,
+  updateUserWatchHistory,
+  deleteUserWatchHistory,
 };

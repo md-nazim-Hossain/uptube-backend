@@ -24,6 +24,8 @@ router.route("/user").get(verifyJWT, userController.getCurrentUser);
 router.route("/get-channel-analytics").get(verifyJWT, userController.getChannelAnalytics);
 router.route("/get-all-channel-subscriber").get(verifyJWT, userController.getAllChannelSubscriber);
 router.route("/watch-history").get(verifyJWT, userController.getUserWatchHistory);
+router.route("/added-watch-history").get(verifyJWT, userController.updateUserWatchHistory);
+router.route("/delete-watch-history/:id").delete(verifyJWT, userController.deleteUserWatchHistory);
 router.route("/logout").post(verifyJWT, userController.logoutUser);
 router.route("/refresh-token").post(userController.refreshAccessToken);
 router.route("/change-current-password").patch(verifyJWT, userController.changeCurrentPassword);
