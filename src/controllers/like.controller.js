@@ -21,7 +21,7 @@ const getUserLikeVideos = catchAsync(async (req, res) => {
               localField: "owner",
               foreignField: "_id",
               as: "owner",
-              pipeline: [{ $project: { password: 0, refreshToken: 0, accessToken: 0 } }],
+              pipeline: [{ $project: { username: 1, fullName: 1, avatar: 1, isVerified: 1, views: 1, createdAt: 1 } }],
             },
           },
           { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
@@ -36,13 +36,13 @@ const getUserLikeVideos = catchAsync(async (req, res) => {
       res,
       statusCode: StatusCode.OK,
       data: [],
-      message: "No likes found",
+      message: "No like videos found",
     });
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: likeVideos,
-    message: "Likes found successfully",
+    message: "Like videos found successfully",
   });
 });
 

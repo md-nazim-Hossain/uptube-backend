@@ -65,6 +65,40 @@ const getAllContentsByType = catchAsync(async (req, res) => {
   });
 });
 
+const getAllTrandingContent = catchAsync(async (req, res) => {
+  const isMusic = req.query.isMusic;
+  let query = {
+    isPublished: true,
+    views: {
+      $gte: 100,
+    },
+  };
+  if (isMusic) {
+    query.type = "video";
+  } else {
+    query.createdAt = {
+      $gte: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
+    };
+  }
+  const trendingContent = await Video.find(query)
+    .populate("owner", "avatar fullName isVerified username")
+    .sort({ views: -1 })
+    .limit(30);
+  if (!trendingContent || !trendingContent.length)
+    return sendApiResponse({
+      res,
+      data: [],
+      message: "Not Trending Video found",
+      statusCode: StatusCode.OK,
+    });
+  return sendApiResponse({
+    res,
+    data: trendingContent,
+    message: "Trending Video found",
+    statusCode: StatusCode.OK,
+  });
+});
+
 const getAllShorts = catchAsync(async (req, res) => {
   let userId = getUserIdFromToken(req);
   if (userId) userId = new mongoose.Types.ObjectId(userId);
@@ -411,4 +445,5 @@ export const videoController = {
   getAllShorts,
   getAllSearchContent,
   updateViewCount,
+  getAllTrandingContent,
 };

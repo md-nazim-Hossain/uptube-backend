@@ -605,22 +605,6 @@ const updateUserWatchHistory = catchAsync(async (req, res) => {
   });
 });
 
-const deleteUserWatchHistory = catchAsync(async (req, res) => {
-  const id = new mongoose.Types.ObjectId(req.params.id);
-  const user = await User.findByIdAndUpdate(req.user._id, {
-    $pull: {
-      watchHistory: id,
-    },
-  });
-  if (!user) throw new ApiError(StatusCode.NOT_FOUND, "User not found");
-  return sendApiResponse({
-    res,
-    data: null,
-    message: "Video remove from user watchhistory",
-    statusCode: StatusCode.OK,
-  });
-});
-
 const updateUserAccountDetails = catchAsync(async (req, res) => {
   const { fullName, email, description } = req.body;
   if (!(fullName || email || description)) {
@@ -802,6 +786,22 @@ const changeCurrentPassword = catchAsync(async (req, res) => {
   return sendApiResponse({
     res,
     message: "Password updated successfully",
+    statusCode: StatusCode.OK,
+  });
+});
+
+const deleteUserWatchHistory = catchAsync(async (req, res) => {
+  const id = new mongoose.Types.ObjectId(req.params.id);
+  const user = await User.findByIdAndUpdate(req.user._id, {
+    $pull: {
+      watchHistory: id,
+    },
+  });
+  if (!user) throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  return sendApiResponse({
+    res,
+    data: null,
+    message: "Video remove from user watchhistory",
     statusCode: StatusCode.OK,
   });
 });

@@ -11,6 +11,7 @@ router.route("/get-video/:id").get(videoController.getVideoById);
 router.route("/get-video-by-user-id/:id").get(videoController.getVideoByUserId);
 router.route("/get-all-search-content").get(videoController.getAllSearchContent);
 router.route("/update-view-count/:id").get(videoController.updateViewCount);
+router.route("/trending").get(videoController.getAllTrandingContent);
 
 // Protect all routes after this middleware
 router.route("/get-all-user-content-by-type").get(verifyJWT, videoController.getAllUserContentByType);
