@@ -9,7 +9,13 @@ const app = express();
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
 app.use(express.json({ limit: config.constants.limit }));
-app.use(cors({ origin: config.clientUrl, credentials: true }));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "DELETE", "UPDATE", "PUT"],
+    credentials: true,
+  })
+);
 app.use(cookieParser());
 
 //routes import ;
