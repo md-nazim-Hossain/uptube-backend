@@ -5,7 +5,6 @@ export const config = {
   db_url: process.env.DATABASE_URL,
   resend_api_key: process.env.RESEND_API_KEY,
   from_email: "Acme <onboarding@resend.dev>",
-  origin: process.env.NODE_ENV === "production" ? "https://up-tube.vercel.app/" : "http://localhost:3000/",
   clientUrl: process.env.NODE_ENV === "production" ? "https://up-tube.vercel.app" : "http://localhost:3000",
   constants: {
     db_name: DB_NAME,
