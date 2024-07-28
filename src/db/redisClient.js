@@ -1,8 +1,9 @@
 import { createClient } from "redis";
+import { config } from "../config/index.js";
 const redisClient = createClient({
-  password: "8NE5bsU2SbvDWwnCZQqa9j5sD9m0Kurm",
+  password: config.redis.passowrd,
   socket: {
-    host: "redis-19979.c57.us-east-1-4.ec2.redns.redis-cloud.com",
+    host: config.redis.host,
     port: 19979,
   },
 });

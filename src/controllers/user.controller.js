@@ -9,6 +9,7 @@ import { config } from "../config/index.js";
 import mongoose from "mongoose";
 import { getUserIdFromToken } from "../utils/jwt.js";
 import { sendEmail } from "../utils/send-email.js";
+import { redis } from "../utils/redis.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -346,10 +347,20 @@ const refreshAccessToken = catchAsync(async (req, res) => {
 });
 
 const getCurrentUser = catchAsync(async (req, res) => {
-  const user = await User.findById(req.user._id).select("-password -refreshToken -watchHistory -likeVideos");
+  const cachedData = await redis.get(`users-${req.user._id}`);
+  if (cachedData && cachedData._id) {
+    return sendApiResponse({
+      res,
+      data: cachedData,
+      message: "User fetched from caching successfully",
+      statusCode: StatusCode.OK,
+    });
+  }
+  const user = await User.findById(req.user._id).select("-password -refreshToken -watchHistory -lastPasswordChange");
   if (!user) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
+  await redis.setEx(`users-${req.user._id}`, user);
   return sendApiResponse({
     res,
     data: user,
@@ -448,6 +459,15 @@ const getAllChannelSubscriber = catchAsync(async (req, res) => {
 });
 
 const getUserWatchHistory = catchAsync(async (req, res) => {
+  // const cacheHistoryData = await redis.get(`history-${req.user._id}`);
+  // if (cacheHistoryData) {
+  //   return sendApiResponse({
+  //     res,
+  //     data: cacheHistoryData,
+  //     message: "User watch history fetched successfully from caching",
+  //     statusCode: StatusCode.OK,
+  //   });
+  // }
   const user = await User.aggregate([
     {
       $match: {
@@ -494,6 +514,7 @@ const getUserWatchHistory = catchAsync(async (req, res) => {
   if (!user || !user.length) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
+  await redis.setEx(`history-${req.user._id}`, user[0].watchHistory);
   return sendApiResponse({
     res,
     data: user[0].watchHistory,
@@ -597,6 +618,7 @@ const updateUserWatchHistory = catchAsync(async (req, res) => {
   if (!updateWatchHistory) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
+
   return sendApiResponse({
     res,
     data: null,
@@ -627,6 +649,7 @@ const updateUserAccountDetails = catchAsync(async (req, res) => {
   if (!user) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
+  await redis.setEx(`users-${req.user._id}`, user);
   return sendApiResponse({
     res,
     data: user,
@@ -655,7 +678,9 @@ const updateUserAvatar = catchAsync(async (req, res) => {
     {
       new: true,
     }
-  ).select("-password -refreshToken -watchHistory");
+  ).select("-password -refreshToken -watchHistory -lastPasswordChange");
+  await redis.setEx(`users-${req.user._id}`, user);
+
   return sendApiResponse({
     res,
     data: user,
@@ -685,6 +710,7 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
       new: true,
     }
   ).select("-password -refreshToken -watchHistory -lastPasswordChange");
+  await redis.setEx(`users-${req.user._id}`, user);
 
   return sendApiResponse({
     res,
@@ -792,12 +818,18 @@ const changeCurrentPassword = catchAsync(async (req, res) => {
 
 const deleteUserWatchHistory = catchAsync(async (req, res) => {
   const id = new mongoose.Types.ObjectId(req.params.id);
-  const user = await User.findByIdAndUpdate(req.user._id, {
-    $pull: {
-      watchHistory: id,
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $pull: {
+        watchHistory: id,
+      },
     },
-  });
+    { new: true }
+  );
   if (!user) throw new ApiError(StatusCode.NOT_FOUND, "User not found");
+  // const cachedData = ((await redis.get(`history-${req.user._id}`)) ?? [])?.filter((h) => h._id !== req.params.id);
+  // await redis.setEx(`history-${req.user._id}`, cachedData);
   return sendApiResponse({
     res,
     data: null,

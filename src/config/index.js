@@ -26,4 +26,9 @@ export const config = {
     api_key: process.env.CLOUDINARY_API_KEY,
     api_secret: process.env.CLOUDINARY_API_SECRET,
   },
+  redis: {
+    passowrd: process.env.REDIS_PASSWORD,
+    host: process.env.REDIS_HOST,
+    port: 19979,
+  },
 };
