@@ -11,8 +11,7 @@ app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
 app.use(express.json({ limit: config.constants.limit }));
 app.use(
   cors({
-    origin: "*",
-    methods: ["GET", "POST", "DELETE", "UPDATE", "PUT"],
+    origin: config.clientUrl,
     credentials: true,
   })
 );
