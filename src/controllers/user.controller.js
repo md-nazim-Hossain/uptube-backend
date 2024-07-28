@@ -628,8 +628,8 @@ const updateUserWatchHistory = catchAsync(async (req, res) => {
 });
 
 const updateUserAccountDetails = catchAsync(async (req, res) => {
-  const { fullName, email, description } = req.body;
-  if (!(fullName || email || description)) {
+  const { fullName, email, description, country } = req.body;
+  if (!(fullName || email || description || country)) {
     throw new ApiError(StatusCode.BAD_REQUEST, "FullName, email or description are required");
   }
   const user = await User.findByIdAndUpdate(
@@ -639,6 +639,7 @@ const updateUserAccountDetails = catchAsync(async (req, res) => {
         fullName,
         email,
         description,
+        country,
       },
     },
     {
