@@ -570,7 +570,7 @@ const getChannelAnalytics = catchAsync(async (req, res) => {
         localField: "_id",
         foreignField: "channel",
         as: "subscribers",
-        pipeline: [{ $match: { chnnel: _id } }],
+        pipeline: [{ $match: { channel: _id } }],
       },
     },
     {
