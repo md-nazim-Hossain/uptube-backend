@@ -34,6 +34,12 @@ const commentsSchema = new Schema(
         ref: "Comment",
       },
     ],
+    likes: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     lastEditedAt: {
       type: Date,
     },

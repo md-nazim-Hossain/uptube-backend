@@ -4,55 +4,7 @@ import { sendApiResponse } from "../utils/ApiResponse.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
-import { Like } from "../models/like.model.js";
-import { getUserIdFromToken } from "../utils/jwt.js";
 
-const getAllComment = catchAsync(async (req, res) => {
-  const id = new mongoose.Types.ObjectId(req.params.id);
-  let userId = getUserIdFromToken(req);
-  if (userId) userId = new mongoose.Types.ObjectId(userId);
-  const comments = await Comment.aggregate([
-    {
-      $match: {
-        $and: [{ parentComment: null }, { video: id }],
-      },
-    },
-    {
-      $graphLookup: {
-        from: "comments",
-        connectToField: "_id",
-        connectFromField: "replies",
-        startWith: "$replies",
-        as: "replies",
-        maxDepth: 100,
-      },
-    },
-    {
-      $lookup: {
-        from: "likes",
-        localField: "_id",
-        foreignField: "comment",
-        as: "likes",
-      },
-    },
-
-    {
-      $addFields: {
-        likes: { $size: "$likes" },
-        isLiked: {
-          $cond: { if: { $in: [userId, "$likes.likedBy"] }, then: true, else: false },
-        },
-      },
-    },
-  ]);
-
-  return sendApiResponse({
-    res,
-    statusCode: StatusCode.OK,
-    data: comments,
-    message: "Comments found successfully",
-  });
-});
 const getAllCommnetsByContentId = catchAsync(async (req, res) => {
   const { id } = req.params;
   if (!id) throw new ApiError(StatusCode.BAD_REQUEST, "Video id or tweet id is required");
@@ -95,12 +47,37 @@ const createComment = catchAsync(async (req, res) => {
   if (isReplay) commentData.parentComment = new mongoose.Types.ObjectId(commentId);
   const newComment = await Comment.create(commentData);
   if (!newComment) throw new ApiError(StatusCode.BAD_REQUEST, "Error creating a comment");
-  if (isReplay) await Comment.findByIdAndUpdate(commentId, { $push: { replies: newComment._id } });
+  if (isReplay)
+    await Comment.findByIdAndUpdate(commentId, { $push: { replies: newComment._id } }, { new: true }).lean();
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: newComment,
     message: "Comment created successfully",
+  });
+});
+
+const commentLikeDislike = catchAsync(async (req, res) => {
+  const { state, id } = req.body;
+  if (!id) throw new ApiError(StatusCode.BAD_REQUEST, "Comment id is required");
+  if (!state) throw new ApiError(StatusCode.BAD_REQUEST, "State is required");
+  const likeObj = {};
+  if (state === "like") {
+    likeObj["$addToSet"] = {
+      likes: new mongoose.Types.ObjectId(req.user._id),
+    };
+  } else {
+    likeObj["$pull"] = {
+      likes: new mongoose.Types.ObjectId(req.user._id),
+    };
+  }
+  const comment = await Comment.findByIdAndUpdate(id, likeObj, { new: true });
+  if (!comment) throw new ApiError(StatusCode.NOT_FOUND, "Comment not found");
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: comment,
+    message: `${state == "like" ? "Like created" : "Removed like"} successfully`,
   });
 });
 
@@ -124,40 +101,21 @@ const updateComment = catchAsync(async (req, res) => {
 const deleteComment = catchAsync(async (req, res) => {
   const comment = await Comment.findById(req.params.id).lean();
   if (!comment) throw new ApiError(StatusCode.NOT_FOUND, "Comment not found");
-  const session = await mongoose.startSession();
-  try {
-    session.startTransaction();
-    await Comment.deleteMany({ _id: { $in: comment.replies } }, { multi: true, session });
-    const deleteComment = await Comment.deleteOne({ _id: req.params.id }, { session });
-    if (!deleteComment) throw new ApiError(StatusCode.BAD_REQUEST, "Failed to delete comment");
-    const likes = await Like.deleteMany(
-      {
-        comment: { $in: [...comment.replies, new mongoose.Types.ObjectId(req.params.id)] },
-      },
-      { session }
-    );
-
-    if (!likes) throw new ApiError(StatusCode.BAD_REQUEST, "Failed to delete comment likes");
-
-    await session.commitTransaction();
-    await session.endSession();
-    return sendApiResponse({
-      res,
-      statusCode: StatusCode.OK,
-      data: comment,
-      message: "Comment deleted successfully",
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    await session.endSession();
-    throw error;
-  }
+  await Comment.deleteMany({ _id: { $in: comment.replies } }, { multi: true });
+  const deleteComment = await Comment.deleteOne({ _id: req.params.id });
+  if (!deleteComment) throw new ApiError(StatusCode.BAD_REQUEST, "Failed to delete comment");
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: null,
+    message: "Comment deleted successfully",
+  });
 });
 
 export const commentController = {
-  getAllComment,
   createComment,
   deleteComment,
   updateComment,
   getAllCommnetsByContentId,
+  commentLikeDislike,
 };
