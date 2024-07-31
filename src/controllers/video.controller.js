@@ -318,22 +318,31 @@ const updateViewCount = catchAsync(async (req, res) => {
 });
 
 const uploadVideo = catchAsync(async (req, res) => {
-  const { title, description, isPublished } = req.body;
+  const { title, description, isPublished, type } = req.body;
   if (!title || !description) {
-    throw new Error("Title and description are required");
+    throw new ApiError(StatusCode.BAD_REQUEST, "Title and description are required");
   }
   const videoFilesLocalPath = req.files.videoFiles?.[0]?.path;
   const thumbnailFilesLocalPath = req.files.thumbnail?.[0]?.path;
+  if (!videoFilesLocalPath) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Video file are required");
+  }
+  if (type === "video" && !thumbnailFilesLocalPath) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Thumbnail are required");
+  }
 
-  if (!videoFilesLocalPath || !thumbnailFilesLocalPath) {
-    throw new Error("Video files and thumbnail files are required");
+  let thumbnail;
+  if (thumbnailFilesLocalPath) {
+    thumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
   }
 
   const videoFiles = await uploadOnCloudinary(videoFilesLocalPath);
-  const thumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
 
-  if (!videoFiles || !thumbnail) {
-    throw new Error("Error uploading files to cloudinary");
+  if (!videoFiles) {
+    throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading files to cloudinary");
+  }
+  if (type === "video" && !thumbnail) {
+    throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading thumbnail to cloudinary");
   }
   const { url, duration } = videoFiles;
 
@@ -341,14 +350,15 @@ const uploadVideo = catchAsync(async (req, res) => {
     description,
     title,
     videoFile: url,
-    thumbnail: thumbnail.url,
+    thumbnail: thumbnail?.url || "",
     duration,
     isPublished,
+    type,
     owner: new mongoose.Types.ObjectId(req.user._id),
   });
 
   if (!uploadVideos) {
-    throw new Error("Error save to uploading video into db");
+    throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error save to uploading video into db");
   }
 
   return sendApiResponse({
@@ -360,9 +370,13 @@ const uploadVideo = catchAsync(async (req, res) => {
 });
 
 const updateVideo = catchAsync(async (req, res) => {
-  const { title, description, isPublished, thumbnail } = req.body;
-  if (!title || !description || !thumbnail || !isPublished) {
-    throw new Error("One field is required");
+  const { title, description, isPublished, type, thumbnail } = req.body;
+  if (!title || !description || !isPublished || !type) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "One field is required");
+  }
+
+  if (type === "video" && !thumbnail) {
+    throw new ApiError(StatusCode.BAD_REQUEST, "Thumbnail is required");
   }
 
   const thumbnailFilesLocalPath = req.files.thumbnail?.[0]?.path;
@@ -370,13 +384,13 @@ const updateVideo = catchAsync(async (req, res) => {
   if (thumbnailFilesLocalPath) {
     const thumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
     if (!thumbnail) {
-      throw new Error("Error uploading files to cloudinary");
+      throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading files to cloudinary");
     }
     req.body.thumbnail = thumbnail.url;
   }
 
   const video = await Video.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  if (!video) throw new Error("Video not found");
+  if (!video) throw new ApiError(StatusCode.NOT_FOUND, "Video not found");
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
