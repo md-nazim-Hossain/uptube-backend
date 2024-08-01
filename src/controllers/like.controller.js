@@ -5,6 +5,24 @@ import { catchAsync } from "../utils/catchAsync.js";
 import StatusCode from "http-status-codes";
 
 const getUserLikeVideos = catchAsync(async (req, res) => {
+  const videoMatcher = [
+    { $match: { isPublished: true } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [{ $project: { username: 1, fullName: 1, avatar: 1, isVerified: 1, views: 1, createdAt: 1 } }],
+      },
+    },
+    { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
+  ];
+  const type = req.query.type;
+  if (type) {
+    videoMatcher.push({ $match: { type } });
+  }
+
   const likeVideos = await Like.aggregate([
     { $match: { likedBy: new mongoose.Types.ObjectId(req.user._id) } },
     { $match: { video: { $ne: null } } },
@@ -14,21 +32,11 @@ const getUserLikeVideos = catchAsync(async (req, res) => {
         localField: "video",
         foreignField: "_id",
         as: "video",
-        pipeline: [
-          {
-            $lookup: {
-              from: "users",
-              localField: "owner",
-              foreignField: "_id",
-              as: "owner",
-              pipeline: [{ $project: { username: 1, fullName: 1, avatar: 1, isVerified: 1, views: 1, createdAt: 1 } }],
-            },
-          },
-          { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
-        ],
+        pipeline: videoMatcher,
       },
     },
     { $addFields: { video: { $arrayElemAt: ["$video", 0] } } },
+    { $unwind: "$video" },
     { $sort: { createdAt: -1 } },
   ]);
   if (!likeVideos || likeVideos.length === 0)
