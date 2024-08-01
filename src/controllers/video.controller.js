@@ -8,6 +8,7 @@ import ApiError from "../utils/ApiError.js";
 import { getUserIdFromToken } from "../utils/jwt.js";
 import { Comment } from "../models/comment.model.js";
 import { Like } from "../models/like.model.js";
+import { generateThumbnails } from "../utils/generate-thumbnails.js";
 // import { redisClient } from "../db/redisClient.js";
 
 const getAllContentsByType = catchAsync(async (req, res) => {
@@ -327,22 +328,23 @@ const uploadVideo = catchAsync(async (req, res) => {
   if (!videoFilesLocalPath) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Video file are required");
   }
-  if (type === "video" && !thumbnailFilesLocalPath) {
-    throw new ApiError(StatusCode.BAD_REQUEST, "Thumbnail are required");
-  }
 
   let thumbnail;
   if (thumbnailFilesLocalPath) {
     thumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
+    if (!thumbnail) {
+      throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading thumbnail to cloudinary");
+    }
+  } else {
+    const result = await generateThumbnails({ url: videoFilesLocalPath });
+    if (!result?.success) throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error generating thumbnail");
+    thumbnail = await uploadOnCloudinary(result?.url);
+    if (!thumbnail) throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading thumbnail to cloudinary");
   }
 
   const videoFiles = await uploadOnCloudinary(videoFilesLocalPath);
-
   if (!videoFiles) {
     throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading files to cloudinary");
-  }
-  if (type === "video" && !thumbnail) {
-    throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading thumbnail to cloudinary");
   }
   const { url, duration } = videoFiles;
 
@@ -350,7 +352,7 @@ const uploadVideo = catchAsync(async (req, res) => {
     description,
     title,
     videoFile: url,
-    thumbnail: thumbnail?.url || "",
+    thumbnail: thumbnail?.url,
     duration,
     isPublished,
     type,
@@ -375,11 +377,10 @@ const updateVideo = catchAsync(async (req, res) => {
     throw new ApiError(StatusCode.BAD_REQUEST, "One field is required");
   }
 
-  if (type === "video" && !thumbnail) {
+  const thumbnailFilesLocalPath = req.files.thumbnail?.[0]?.path;
+  if (!thumbnailFilesLocalPath && !thumbnail) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Thumbnail is required");
   }
-
-  const thumbnailFilesLocalPath = req.files.thumbnail?.[0]?.path;
 
   if (thumbnailFilesLocalPath) {
     const thumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
@@ -425,11 +426,9 @@ const deleteVideo = catchAsync(async (req, res) => {
   const id = req.params.id;
   const session = await mongoose.startSession();
   try {
+    session.startTransaction();
     const video = await Video.findByIdAndDelete(id, { session });
-    if (!video.ok) throw new ApiError(StatusCode.NOT_FOUND, "Video not found");
-    const comment = await Comment.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
-    if (!comment) throw new ApiError(StatusCode.BAD_REQUEST, "Failed to video comment delete");
-
+    if (!video) throw new ApiError(StatusCode.NOT_FOUND, "Video not found");
     const likes = await Like.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
     if (!likes) throw new ApiError(StatusCode.BAD_REQUEST, "Failed to delete video likes");
     await session.commitTransaction();
