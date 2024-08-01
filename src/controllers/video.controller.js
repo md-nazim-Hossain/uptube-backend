@@ -330,16 +330,18 @@ const uploadVideo = catchAsync(async (req, res) => {
   }
 
   let thumbnail;
-  if (thumbnailFilesLocalPath) {
-    thumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
-    if (!thumbnail) {
-      throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading thumbnail to cloudinary");
+  if (type === "video") {
+    if (thumbnailFilesLocalPath) {
+      thumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
+      if (!thumbnail) {
+        throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading thumbnail to cloudinary");
+      }
+    } else {
+      const result = await generateThumbnails({ url: videoFilesLocalPath });
+      if (!result?.success) throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error generating thumbnail");
+      thumbnail = await uploadOnCloudinary(result?.url);
+      if (!thumbnail) throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading thumbnail to cloudinary");
     }
-  } else {
-    const result = await generateThumbnails({ url: videoFilesLocalPath });
-    if (!result?.success) throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error generating thumbnail");
-    thumbnail = await uploadOnCloudinary(result?.url);
-    if (!thumbnail) throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading thumbnail to cloudinary");
   }
 
   const videoFiles = await uploadOnCloudinary(videoFilesLocalPath);
@@ -352,7 +354,7 @@ const uploadVideo = catchAsync(async (req, res) => {
     description,
     title,
     videoFile: url,
-    thumbnail: thumbnail?.url,
+    thumbnail: thumbnail?.url || null,
     duration,
     isPublished,
     type,
@@ -378,11 +380,11 @@ const updateVideo = catchAsync(async (req, res) => {
   }
 
   const thumbnailFilesLocalPath = req.files.thumbnail?.[0]?.path;
-  if (!thumbnailFilesLocalPath && !thumbnail) {
+  if (!thumbnailFilesLocalPath && !thumbnail && type === "video") {
     throw new ApiError(StatusCode.BAD_REQUEST, "Thumbnail is required");
   }
 
-  if (thumbnailFilesLocalPath) {
+  if (thumbnailFilesLocalPath && type === "video") {
     const thumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
     if (!thumbnail) {
       throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading files to cloudinary");
