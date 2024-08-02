@@ -1,15 +1,12 @@
-import { DB_NAME, LIMIT } from "../constants.js";
-
 export const config = {
   port: process.env.PORT || 5000,
   db_url: process.env.DATABASE_URL,
   resend_api_key: process.env.RESEND_API_KEY,
   from_email: "Acme <onboarding@resend.dev>",
   clientUrl: process.env.NODE_ENV === "production" ? "https://up-tube.vercel.app" : "http://localhost:3000",
-  domain: process.env.NODE_ENV === "production" ? "up-tube.vercel.app" : "localhost",
   constants: {
-    db_name: DB_NAME,
-    limit: LIMIT,
+    db_name: "up-tube",
+    limit: "100mb",
   },
   jwt: {
     access_token_secret: process.env.JWT_ACCESS_TOKEN_SECRET,
