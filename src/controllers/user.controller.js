@@ -303,10 +303,8 @@ const logoutUser = catchAsync(async (req, res) => {
       new: true,
     }
   );
-  const options = {
-    expires: new Date(0),
-  };
-  return res.status(StatusCode.OK).clearCookie("accessToken", options).clearCookie("refreshToken", options).json({
+
+  return res.status(StatusCode.OK).clearCookie("accessToken").clearCookie("refreshToken").json({
     success: true,
     message: "User logged out successfully",
     data: null,
