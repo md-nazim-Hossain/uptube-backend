@@ -1,12 +1,12 @@
 {
   "name": "youtube-backend",
   "version": "1.0.0",
-  "description": "this is youtube backend ",
-  "main": "server.js",
+  "description": "this is UPTube backend ",
+  "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon -r dotenv/config --experimental-json-modules src/server.js",
-    "start": "node src/server.js"
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
+    "start": "node src/index.js"
   },
   "keywords": [
     "javascript",
