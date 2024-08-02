@@ -281,30 +281,21 @@ const loginUser = catchAsync(async (req, res) => {
   const options = {
     httpOnly: req.protocol === "https",
     secure: req.protocol === "https",
-    domain: config.domain,
+    // domain: config.domain,
+    sameSite: "none",
   };
-  res.setHeader("Set-Cookie", [
-    `accessToken=${accessToken}; HttpOnly=${options.httpOnly}; Secure=${options.secure}; Path=/; Expires=${new Date(
-      new Date().setDate(new Date().getDate() + 3)
-    )}`,
-    `refreshToken=${refreshToken}; HttpOnly=${options.httpOnly}; Secure=${options.secure}; Path=/; Expires=${new Date(
-      new Date().setDate(new Date().getDate() + 365)
-    )}`,
-  ]);
-  return (
-    res
-      .status(StatusCode.OK)
-      // .cookie("accessToken", accessToken, { ...options, expires: new Date(new Date().setDate(new Date().getDate() + 3)) })
-      // .cookie("refreshToken", refreshToken, {
-      //   ...options,
-      //   expires: new Date(new Date().setDate(new Date().getDate() + 365)),
-      // })
-      .json({
-        success: true,
-        message: "User logged in successfully",
-        data: findUser,
-      })
-  );
+  return res
+    .status(StatusCode.OK)
+    .cookie("accessToken", accessToken, { ...options, expires: new Date(new Date().setDate(new Date().getDate() + 3)) })
+    .cookie("refreshToken", refreshToken, {
+      ...options,
+      expires: new Date(new Date().setDate(new Date().getDate() + 365)),
+    })
+    .json({
+      success: true,
+      message: "User logged in successfully",
+      data: findUser,
+    });
 });
 
 const logoutUser = catchAsync(async (req, res) => {
@@ -322,8 +313,9 @@ const logoutUser = catchAsync(async (req, res) => {
   const options = {
     httpOnly: req.protocol === "https",
     secure: req.protocol === "https",
-    domain: config.domain,
+    // domain: config.domain,
     expires: new Date(0),
+    sameSite: "none",
   };
   return res.status(StatusCode.OK).clearCookie("accessToken", options).clearCookie("refreshToken", options).json({
     success: true,
@@ -348,9 +340,15 @@ const refreshAccessToken = catchAsync(async (req, res) => {
   }
 
   if (incomingRefreshToken !== user.refreshToken) {
-    throw new ApiError(StatusCode.UNAUTHORIZED, "Refresh token is not valid or expired");
+    throw new ApiError(StatusCode.UNAUTHORIZED, "Refresh token is not valid");
   }
-  const options = { httpOnly: true, secure: true };
+  const options = {
+    httpOnly: req.protocol === "https",
+    secure: req.protocol === "https",
+    domain: config.domain,
+    sameSite: "none",
+    expires: new Date(0),
+  };
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
   return res
     .status(StatusCode.OK)
