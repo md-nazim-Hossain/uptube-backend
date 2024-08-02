@@ -281,7 +281,6 @@ const loginUser = catchAsync(async (req, res) => {
   const options = {
     httpOnly: process.env.NODE_ENV === "production",
     secure: process.env.NODE_ENV === "production",
-    domain: config.domain,
     sameSite: "None",
   };
   return res
@@ -311,11 +310,10 @@ const logoutUser = catchAsync(async (req, res) => {
     }
   );
   const options = {
-    httpOnly: req.protocol === "https",
-    secure: req.protocol === "https",
-    // domain: config.domain,
+    httpOnly: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production",
     expires: new Date(0),
-    sameSite: "none",
+    sameSite: "None",
   };
   return res.status(StatusCode.OK).clearCookie("accessToken", options).clearCookie("refreshToken", options).json({
     success: true,
@@ -343,11 +341,10 @@ const refreshAccessToken = catchAsync(async (req, res) => {
     throw new ApiError(StatusCode.UNAUTHORIZED, "Refresh token is not valid");
   }
   const options = {
-    httpOnly: req.protocol === "https",
-    secure: req.protocol === "https",
-    domain: config.domain,
-    sameSite: "none",
-    expires: new Date(0),
+    httpOnly: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "None",
+    expires: new Date(new Date().setDate(new Date().getDate() + 3)),
   };
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
   return res
