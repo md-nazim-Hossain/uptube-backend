@@ -6,6 +6,8 @@ import jwt from "jsonwebtoken";
 import { sendApiResponse } from "../utils/ApiResponse.js";
 
 export const verifyJWT = async (req, res, next) => {
+  console.log("---cookies", req.cookies, "headers----", req.headers);
+
   try {
     const token =
       req.cookies?.accessToken || req.headers?.Authorization?.split(" ")[1] || req.headers.authorization.split(" ")[1];

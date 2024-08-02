@@ -282,6 +282,7 @@ const loginUser = catchAsync(async (req, res) => {
     httpOnly: process.env.NODE_ENV === "production",
     secure: true,
     sameSite: "None",
+    domail: process.env.NODE_ENV === "production" ? ".vercel.app" : "localhost",
   };
   return res
     .status(StatusCode.OK)
@@ -345,6 +346,7 @@ const refreshAccessToken = catchAsync(async (req, res) => {
     secure: true,
     sameSite: "None",
     expires: new Date(new Date().setDate(new Date().getDate() + 3)),
+    domail: process.env.NODE_ENV === "production" ? ".vercel.app" : "localhost",
   };
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
   return res
