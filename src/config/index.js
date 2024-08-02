@@ -6,6 +6,7 @@ export const config = {
   resend_api_key: process.env.RESEND_API_KEY,
   from_email: "Acme <onboarding@resend.dev>",
   clientUrl: process.env.NODE_ENV === "production" ? "https://up-tube.vercel.app" : "http://localhost:3000",
+  domain: process.env.NODE_ENV === "production" ? "up-tube.vercel.app" : "localhost",
   constants: {
     db_name: DB_NAME,
     limit: LIMIT,

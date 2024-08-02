@@ -278,14 +278,19 @@ const loginUser = catchAsync(async (req, res) => {
   findUser.password = undefined;
   findUser.watchHistory = undefined;
   findUser.lastPasswordChange = undefined;
+  console.log(req.protocol);
   const options = {
-    httpOnly: process.env.NODE_ENV === "production" ? true : false,
-    secure: process.env.NODE_ENV === "production" ? true : false,
+    httpOnly: req.protocol === "https",
+    secure: req.protocol === "https",
+    domain: config.domain,
   };
   return res
     .status(StatusCode.OK)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, { ...options, expires: new Date(new Date().setDate(new Date().getDate() + 3)) })
+    .cookie("refreshToken", refreshToken, {
+      ...options,
+      expires: new Date(new Date().setDate(new Date().getDate() + 365)),
+    })
     .json({
       success: true,
       message: "User logged in successfully",
@@ -306,8 +311,10 @@ const logoutUser = catchAsync(async (req, res) => {
     }
   );
   const options = {
-    httpOnly: true,
-    secure: true,
+    httpOnly: req.protocol === "https",
+    secure: req.protocol === "https",
+    domain: config.domain,
+    expires: new Date(0),
   };
   return res.status(StatusCode.OK).clearCookie("accessToken", options).clearCookie("refreshToken", options).json({
     success: true,
