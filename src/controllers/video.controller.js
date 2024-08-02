@@ -323,8 +323,8 @@ const uploadVideo = catchAsync(async (req, res) => {
   if (!title || !description) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Title and description are required");
   }
-  const videoFilesLocalPath = req.files.videoFiles?.[0]?.path;
-  const thumbnailFilesLocalPath = req.files.thumbnail?.[0]?.path;
+  const videoFilesLocalPath = "./" + req.files.videoFiles?.[0]?.path;
+  const thumbnailFilesLocalPath = "./" + req.files.thumbnail?.[0]?.path;
   if (!videoFilesLocalPath) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Video file are required");
   }
