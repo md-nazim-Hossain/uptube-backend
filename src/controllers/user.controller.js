@@ -284,12 +284,12 @@ const loginUser = catchAsync(async (req, res) => {
     domain: config.domain,
   };
   res.setHeader("Set-Cookie", [
-    `accessToken=${accessToken}; HttpOnly=${options.httpOnly}; Secure=${options.secure}; Path=/; Domain=${
-      config.domain
-    }; Expires=${new Date(new Date().setDate(new Date().getDate() + 3))}`,
-    `refreshToken=${refreshToken}; HttpOnly=${options.httpOnly}; Secure=${options.secure}; Path=/; Domain=${
-      config.domain
-    }; Expires=${new Date(new Date().setDate(new Date().getDate() + 365))}`,
+    `accessToken=${accessToken}; HttpOnly=${options.httpOnly}; Secure=${options.secure}; Path=/; Expires=${new Date(
+      new Date().setDate(new Date().getDate() + 3)
+    )}`,
+    `refreshToken=${refreshToken}; HttpOnly=${options.httpOnly}; Secure=${options.secure}; Path=/; Expires=${new Date(
+      new Date().setDate(new Date().getDate() + 365)
+    )}`,
   ]);
   return (
     res
