@@ -278,24 +278,17 @@ const loginUser = catchAsync(async (req, res) => {
   findUser.password = undefined;
   findUser.watchHistory = undefined;
   findUser.lastPasswordChange = undefined;
-  const options = {
-    httpOnly: process.env.NODE_ENV === "production",
-    secure: true,
-    sameSite: "None",
-    domail: process.env.NODE_ENV === "production" ? ".vercel.app" : "localhost",
-  };
-  return res
-    .status(StatusCode.OK)
-    .cookie("accessToken", accessToken, { ...options, expires: new Date(new Date().setDate(new Date().getDate() + 3)) })
-    .cookie("refreshToken", refreshToken, {
-      ...options,
-      expires: new Date(new Date().setDate(new Date().getDate() + 365)),
-    })
-    .json({
-      success: true,
-      message: "User logged in successfully",
-      data: findUser,
-    });
+
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    message: "User logged in successfully",
+    data: {
+      user: findUser,
+      accessToken,
+      refreshToken,
+    },
+  });
 });
 
 const logoutUser = catchAsync(async (req, res) => {
