@@ -304,10 +304,11 @@ const logoutUser = catchAsync(async (req, res) => {
     }
   );
   const options = {
-    httpOnly: process.env.NODE_ENV === "production",
+    httpOnly: true,
     secure: true,
     expires: new Date(0),
     sameSite: "None",
+    domain: config.domain,
   };
   return res.status(StatusCode.OK).clearCookie("accessToken", options).clearCookie("refreshToken", options).json({
     success: true,
