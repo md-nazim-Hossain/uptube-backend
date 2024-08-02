@@ -279,10 +279,10 @@ const loginUser = catchAsync(async (req, res) => {
   findUser.watchHistory = undefined;
   findUser.lastPasswordChange = undefined;
   const options = {
-    httpOnly: req.protocol === "https",
-    secure: req.protocol === "https",
-    // domain: config.domain,
-    sameSite: "none",
+    httpOnly: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production",
+    domain: config.domain,
+    sameSite: "None",
   };
   return res
     .status(StatusCode.OK)
