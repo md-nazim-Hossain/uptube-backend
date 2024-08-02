@@ -3,8 +3,9 @@ import { User } from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 import StatusCode from "http-status-codes";
 import jwt from "jsonwebtoken";
+import { sendApiResponse } from "../utils/ApiResponse.js";
 
-export const verifyJWT = async (req, _, next) => {
+export const verifyJWT = async (req, res, next) => {
   try {
     const token =
       req.cookies?.accessToken || req.headers?.Authorization?.split(" ")[1] || req.headers.authorization.split(" ")[1];
@@ -24,6 +25,11 @@ export const verifyJWT = async (req, _, next) => {
     req.user = user;
     next();
   } catch (error) {
-    throw new ApiError(StatusCode.UNAUTHORIZED, "Invalid token");
+    return sendApiResponse({
+      res,
+      data: null,
+      message: "Invalid token or Unauthorized request",
+      statusCode: StatusCode.UNAUTHORIZED,
+    });
   }
 };

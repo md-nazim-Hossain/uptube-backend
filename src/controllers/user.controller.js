@@ -280,7 +280,7 @@ const loginUser = catchAsync(async (req, res) => {
   findUser.lastPasswordChange = undefined;
   const options = {
     httpOnly: process.env.NODE_ENV === "production",
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "None",
   };
   return res
@@ -311,7 +311,7 @@ const logoutUser = catchAsync(async (req, res) => {
   );
   const options = {
     httpOnly: process.env.NODE_ENV === "production",
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     expires: new Date(0),
     sameSite: "None",
   };
@@ -342,7 +342,7 @@ const refreshAccessToken = catchAsync(async (req, res) => {
   }
   const options = {
     httpOnly: process.env.NODE_ENV === "production",
-    secure: process.env.NODE_ENV === "production",
+    secure: true,
     sameSite: "None",
     expires: new Date(new Date().setDate(new Date().getDate() + 3)),
   };
