@@ -9,15 +9,18 @@ import { getUserIdFromToken } from "../utils/jwt.js";
 import { Comment } from "../models/comment.model.js";
 import { Like } from "../models/like.model.js";
 import { generateThumbnails } from "../utils/generate-thumbnails.js";
-// import { redisClient } from "../db/redisClient.js";
+import { paginationHelpers } from "../utils/paginationHelpers.js";
 
 const getAllContentsByType = catchAsync(async (req, res) => {
-  const limit = req.query.limit || 10;
-  const skip = req.query.skip || 0;
   const type = req.query.type || "video";
-  const totalContent = await Video.countDocuments({});
+  const totalContent = await Video.countDocuments({ isPublished: true, type });
+  const { limit, meta, skip } = paginationHelpers(req, totalContent);
+
   const content = await Video.aggregate([
     { $match: { isPublished: true, type } },
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
     {
       $lookup: {
         from: "users",
@@ -25,7 +28,7 @@ const getAllContentsByType = catchAsync(async (req, res) => {
         foreignField: "_id",
         as: "owner",
         pipeline: [
-          { $project: { password: 0, refreshToken: 0, accessToken: 0 } },
+          { $project: { password: 0, refreshToken: 0, watchHistory: 0, lastPasswordChange: 0 } },
           {
             $lookup: {
               from: "subscriptions",
@@ -39,30 +42,15 @@ const getAllContentsByType = catchAsync(async (req, res) => {
         ],
       },
     },
-    { $skip: skip },
-    { $limit: limit },
-    { $sort: { createdAt: -1 } },
     { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
   ]);
-  if (!content || content.length === 0)
-    return sendApiResponse({
-      res,
-      statusCode: StatusCode.OK,
-      data: {
-        data: [],
-        total: totalContent,
-      },
-      message: "No content found",
-    });
-  // await redisClient.set(req.originalUrl, JSON.stringify({ data: content, total: totalContent }), { EX: 21600 });
+
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: {
-      data: content,
-      total: totalContent,
-    },
-    message: "Content found successfully",
+    data: content,
+    meta,
+    message: content?.length > 0 ? "Content found successfully" : "No content found",
   });
 });
 
@@ -103,8 +91,14 @@ const getAllTrandingContent = catchAsync(async (req, res) => {
 const getAllShorts = catchAsync(async (req, res) => {
   let userId = getUserIdFromToken(req);
   if (userId) userId = new mongoose.Types.ObjectId(userId);
+
+  const totalShorts = await Video.countDocuments({ type: "short", isPublished: true });
+  const { limit, meta, skip } = paginationHelpers(req, totalShorts);
   const video = await Video.aggregate([
     { $match: { type: "short", isPublished: true } },
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
     {
       $lookup: {
         from: "users",
@@ -130,7 +124,7 @@ const getAllShorts = catchAsync(async (req, res) => {
         ],
       },
     },
-    { $sort: { createdAt: -1 } },
+    { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
     { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
     {
       $addFields: {
@@ -140,20 +134,13 @@ const getAllShorts = catchAsync(async (req, res) => {
         },
       },
     },
-    { $addFields: { owner: { $arrayElemAt: ["$owner", 0] } } },
   ]);
-  if (!video || video.length === 0)
-    return sendApiResponse({
-      res,
-      statusCode: StatusCode.OK,
-      data: [],
-      message: "No content found",
-    });
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: video,
-    message: "Content found successfully",
+    message: video?.length > 0 ? "Content found successfully" : "No content found",
+    meta,
   });
 });
 
@@ -220,26 +207,20 @@ const getVideoByUserId = catchAsync(async (req, res) => {
   if (!req.params.id) throw new ApiError(StatusCode.BAD_REQUEST, "User id is required");
   const type = req.query.type || "video";
   const totalVideos = await Video.countDocuments({ owner: req.params.id, isPublished: true, type });
+  const { limit, skip, meta } = paginationHelpers(req, totalVideos);
   const videos = await Video.find({ owner: req.params.id, isPublished: true, type })
     .sort({ createdAt: -1 })
-    .populate("owner", "-password -refreshToken -watchHistory")
-    .exec();
+    .skip(skip)
+    .limit(limit)
+    .populate("owner", "-password -refreshToken -watchHistory -lastPasswordChange")
+    .lean();
 
-  if (!videos || videos.length === 0)
-    return sendApiResponse({
-      res,
-      statusCode: StatusCode.OK,
-      data: [],
-      message: "No videos found",
-    });
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: {
-      data: videos,
-      total: totalVideos,
-    },
-    message: "Videos found successfully",
+    data: videos,
+    meta,
+    message: videos?.length > 0 ? "Videos found successfully" : "No videos found",
   });
 });
 
@@ -249,6 +230,7 @@ const getAllUserContentByType = catchAsync(async (req, res) => {
   const videos = await Video.aggregate([
     { $match: { owner: userId, type } },
 
+    { $sort: { createdAt: -1 } },
     { $lookup: { from: "comments", localField: "_id", foreignField: "video", as: "comments" } },
     { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
     { $lookup: { from: "playlists", localField: "_id", foreignField: "videos", as: "playlists" } },
@@ -261,7 +243,6 @@ const getAllUserContentByType = catchAsync(async (req, res) => {
         },
       },
     },
-    { $sort: { createdAt: -1 } },
   ]);
   if (!videos)
     return sendApiResponse({
@@ -289,8 +270,8 @@ const getAllSearchContent = catchAsync(async (req, res) => {
     $or: [{ title: { $regex: q } }, { description: { $regex: q } }],
     isPublished: true,
   })
-    .populate("owner", "-password -refreshToken -watchHistory -lastPasswordChange")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .populate("owner", "-password -refreshToken -watchHistory -lastPasswordChange");
 
   if (!content || content.length === 0)
     return sendApiResponse({
