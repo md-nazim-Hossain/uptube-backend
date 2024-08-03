@@ -11,7 +11,7 @@ app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
 app.use(express.json({ limit: config.constants.limit }));
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://up-tube.vercel.app"],
+    origin: ["http://localhost:3000", "https://uptube.vercel.app"],
     credentials: true,
   })
 );
