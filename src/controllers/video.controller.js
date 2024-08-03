@@ -91,14 +91,10 @@ const getAllTrandingContent = catchAsync(async (req, res) => {
 const getAllShorts = catchAsync(async (req, res) => {
   let userId = getUserIdFromToken(req);
   if (userId) userId = new mongoose.Types.ObjectId(userId);
-
   const totalShorts = await Video.countDocuments({ type: "short", isPublished: true });
-  const { limit, meta, skip } = paginationHelpers(req, totalShorts);
-  const video = await Video.aggregate([
-    { $match: { type: "short", isPublished: true } },
-    { $sort: { createdAt: -1 } },
-    { $skip: skip },
-    { $limit: limit },
+  let { limit, meta, skip, queryId } = paginationHelpers(req, totalShorts);
+  const _id = new mongoose.Types.ObjectId(queryId);
+  const aggregration = [
     {
       $lookup: {
         from: "users",
@@ -107,7 +103,7 @@ const getAllShorts = catchAsync(async (req, res) => {
         as: "owner",
         pipeline: [
           { $lookup: { from: "subscriptions", localField: "_id", foreignField: "channel", as: "subscribers" } },
-          { $project: { password: 0, refreshToken: 0, accessToken: 0, watchHistory: 0 } },
+          { $project: { password: 0, refreshToken: 0, lastPasswordChange: 0 } },
           {
             $addFields: {
               subscribersCount: { $size: "$subscribers" },
@@ -134,12 +130,53 @@ const getAllShorts = catchAsync(async (req, res) => {
         },
       },
     },
-  ]);
+  ];
+
+  const rootMatcher = [{ $match: { isPublished: true, type: "short" } }];
+  const relatedMatcher = [];
+
+  if (queryId) {
+    skip = skip > 0 ? skip - 1 : skip;
+    limit -= 1;
+    rootMatcher[0]["$match"]._id = _id;
+    relatedMatcher.push(
+      {
+        $lookup: {
+          from: "videos",
+          localField: "type",
+          foreignField: "type",
+          as: "related",
+          pipeline: [
+            { $match: { isPublished: true, type: "short", _id: { $ne: _id } } },
+            { $sort: { createdAt: -1 } },
+            ...aggregration,
+          ],
+        },
+      },
+      {
+        $addFields: { related: { $slice: ["$related", skip, limit] } },
+      }
+    );
+  } else {
+    relatedMatcher.push({ $sort: { createdAt: -1 } }, { $skip: skip }, { $limit: limit });
+  }
+  const videos = await Video.aggregate([...rootMatcher, ...relatedMatcher, ...aggregration]);
+
+  if (!videos || !videos.length)
+    return sendApiResponse({ res, statusCode: StatusCode.OK, data: [], message: "No content found", meta });
+  let newVideoArray = [];
+  if (queryId) {
+    newVideoArray = videos?.[0]?.related || [];
+    delete videos?.[0]?.related;
+    newVideoArray.unshift(videos?.[0]);
+  } else {
+    newVideoArray = videos;
+  }
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: video,
-    message: video?.length > 0 ? "Content found successfully" : "No content found",
+    data: newVideoArray,
+    message: "Content found successfully",
     meta,
   });
 });
