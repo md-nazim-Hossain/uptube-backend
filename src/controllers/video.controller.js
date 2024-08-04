@@ -92,7 +92,7 @@ const getAllShorts = catchAsync(async (req, res) => {
   let userId = getUserIdFromToken(req);
   if (userId) userId = new mongoose.Types.ObjectId(userId);
   const totalShorts = await Video.countDocuments({ type: "short", isPublished: true });
-  let { limit, meta, skip, queryId } = paginationHelpers(req, totalShorts);
+  let { limit, meta, skip, queryId, page } = paginationHelpers(req, totalShorts);
   const _id = new mongoose.Types.ObjectId(queryId);
   const aggregration = [
     {
@@ -135,7 +135,7 @@ const getAllShorts = catchAsync(async (req, res) => {
   const rootMatcher = [{ $match: { isPublished: true, type: "short" } }];
   const relatedMatcher = [];
 
-  if (queryId) {
+  if (queryId && page === 1) {
     skip = skip > 0 ? skip - 1 : skip;
     limit -= 1;
     rootMatcher[0]["$match"]._id = _id;
@@ -165,7 +165,7 @@ const getAllShorts = catchAsync(async (req, res) => {
   if (!videos || !videos.length)
     return sendApiResponse({ res, statusCode: StatusCode.OK, data: [], message: "No content found", meta });
   let newVideoArray = [];
-  if (queryId) {
+  if (queryId && page === 1) {
     newVideoArray = videos?.[0]?.related || [];
     delete videos?.[0]?.related;
     newVideoArray.unshift(videos?.[0]);
