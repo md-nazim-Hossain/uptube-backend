@@ -11,6 +11,7 @@ import { getUserIdFromToken } from "../utils/jwt.js";
 import { sendEmail } from "../utils/send-email.js";
 import { redis } from "../utils/redis.js";
 import { paginationHelpers } from "../utils/paginationHelpers.js";
+import { Subscription } from "../models/subscriptions.model.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -283,8 +284,8 @@ const loginUser = catchAsync(async (req, res) => {
     httpOnly: true,
     secure: true,
   };
-  res.cookie("accessToken", accessToken, options);
-  res.cookie("refreshToken", refreshToken, options);
+  // res.cookie("accessToken", accessToken, options);
+  // res.cookie("refreshToken", refreshToken, options);
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
@@ -402,12 +403,15 @@ const getUserChannelProfile = catchAsync(async (req, res) => {
 
 const getAllChannelSubscriber = catchAsync(async (req, res) => {
   const userId = new mongoose.Types.ObjectId(req.user._id);
+  const totalSubscribers = await Subscription.countDocuments({ channel: userId });
+  const { limit, meta, skip } = paginationHelpers(req, totalSubscribers);
   const channel = await User.aggregate([
     {
       $match: {
         _id: userId,
       },
     },
+
     {
       $lookup: {
         from: "subscriptions",
@@ -415,6 +419,9 @@ const getAllChannelSubscriber = catchAsync(async (req, res) => {
         foreignField: "channel",
         as: "subscribers",
         pipeline: [
+          { $sort: { createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
           {
             $lookup: {
               from: "users",
@@ -451,12 +458,14 @@ const getAllChannelSubscriber = catchAsync(async (req, res) => {
     },
     { $project: { subscribers: 1 } },
   ]);
+
   if (!channel || !channel.length || !channel[0]?.subscribers?.length) {
     return sendApiResponse({
       res,
       data: null,
       message: "User channel not found",
       statusCode: StatusCode.OK,
+      meta,
     });
   }
   return sendApiResponse({
@@ -464,6 +473,7 @@ const getAllChannelSubscriber = catchAsync(async (req, res) => {
     data: channel[0].subscribers,
     message: "User channel fetched successfully",
     statusCode: StatusCode.OK,
+    meta,
   });
 });
 
