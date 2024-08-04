@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 import { getUserIdFromToken } from "../utils/jwt.js";
 import { sendEmail } from "../utils/send-email.js";
 import { redis } from "../utils/redis.js";
+import { paginationHelpers } from "../utils/paginationHelpers.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -278,7 +279,12 @@ const loginUser = catchAsync(async (req, res) => {
   findUser.password = undefined;
   findUser.watchHistory = undefined;
   findUser.lastPasswordChange = undefined;
-
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+  res.cookie("accessToken", accessToken, options);
+  res.cookie("refreshToken", refreshToken, options);
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
@@ -462,15 +468,19 @@ const getAllChannelSubscriber = catchAsync(async (req, res) => {
 });
 
 const getUserWatchHistory = catchAsync(async (req, res) => {
-  // const cacheHistoryData = await redis.get(`history-${req.user._id}`);
-  // if (cacheHistoryData) {
-  //   return sendApiResponse({
-  //     res,
-  //     data: cacheHistoryData,
-  //     message: "User watch history fetched successfully from caching",
-  //     statusCode: StatusCode.OK,
-  //   });
-  // }
+  const getUserWatchHistory = await User.findById(req.user._id).select("watchHistory -_id");
+  const watchHistoryCount = getUserWatchHistory?.watchHistory?.length;
+  const { limit, meta, skip } = paginationHelpers(req, watchHistoryCount);
+
+  if (!watchHistoryCount) {
+    return sendApiResponse({
+      res,
+      data: [],
+      message: "User watch history not found",
+      statusCode: StatusCode.OK,
+      meta,
+    });
+  }
   const user = await User.aggregate([
     {
       $match: {
@@ -484,6 +494,9 @@ const getUserWatchHistory = catchAsync(async (req, res) => {
         foreignField: "_id",
         as: "watchHistory",
         pipeline: [
+          { $sort: { createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
           {
             $lookup: {
               from: "users",
@@ -517,12 +530,12 @@ const getUserWatchHistory = catchAsync(async (req, res) => {
   if (!user || !user.length) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
-  await redis.setEx(`history-${req.user._id}`, user[0].watchHistory);
   return sendApiResponse({
     res,
     data: user[0].watchHistory,
     message: "User watch history fetched successfully",
     statusCode: StatusCode.OK,
+    meta,
   });
 });
 
