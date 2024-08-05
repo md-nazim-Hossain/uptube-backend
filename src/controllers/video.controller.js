@@ -325,6 +325,43 @@ const getAllSearchContent = catchAsync(async (req, res) => {
   });
 });
 
+const getAllContentByHashTag = catchAsync(async (req, res) => {
+  const { hashtag } = req?.params;
+  const hashtagTrim = hashtag.trim();
+  const type = req?.query?.type;
+
+  if (!hashtagTrim) throw new ApiError(StatusCode.BAD_REQUEST, "Hashtag is required");
+
+  const hashtagText = hashtagTrim.startsWith("#") ? hashtagTrim : `#${hashtagTrim}`;
+  const query = new RegExp(hashtagText, "i");
+  const searchQuery = {
+    $or: [{ title: { $regex: query } }, { description: { $regex: query } }],
+    isPublished: true,
+  };
+
+  if (type) {
+    searchQuery.type = type;
+  }
+
+  const totalContent = await Video.countDocuments(searchQuery);
+  const { limit, meta, skip } = paginationHelpers(req, totalContent);
+
+  const videos = await Video.find(searchQuery)
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .skip(skip)
+    .populate("owner", "-password -refreshToken -watchHistory -lastPasswordChange")
+    .lean();
+
+  return sendApiResponse({
+    res,
+    data: videos,
+    message: videos?.length > 0 ? "Data found successfully" : `No ${hashtagTrim} hashtag found`,
+    statusCode: StatusCode.OK,
+    meta,
+  });
+});
+
 const updateViewCount = catchAsync(async (req, res) => {
   const video = await Video.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }, { new: true });
   if (!video) throw new ApiError("Video not found");
@@ -481,4 +518,5 @@ export const videoController = {
   getAllSearchContent,
   updateViewCount,
   getAllTrandingContent,
+  getAllContentByHashTag,
 };
