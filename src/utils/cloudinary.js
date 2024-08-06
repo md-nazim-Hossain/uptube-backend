@@ -13,6 +13,7 @@ const uploadOnCloudinary = async (localFilePath) => {
     if (!localFilePath) throw new Error("localFilePath is required");
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto",
+      folder: "uptube",
     });
     fs.unlinkSync(localFilePath);
     return response;
