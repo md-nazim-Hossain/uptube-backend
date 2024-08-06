@@ -3,21 +3,24 @@ import { PlayList } from "../models/playlist.model.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
 import mongoose from "mongoose";
 import StatusCode from "http-status-codes";
+import { paginationHelpers } from "../utils/paginationHelpers.js";
 
 const getAllPlaylists = catchAsync(async (req, res) => {
-  const playlists = await PlayList.find({ owner: req.user._id }).populate("videos").sort({ createdAt: -1 });
-  if (!playlists || playlists.length === 0)
-    return sendApiResponse({
-      res,
-      statusCode: StatusCode.OK,
-      data: [],
-      message: "No playlists found",
-    });
+  const totalPlaylists = await PlayList.countDocuments({ isPublished: true });
+  const { limit, skip, meta } = paginationHelpers(req, totalPlaylists);
+  const playlists = await PlayList.find({ isPublished: true })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate("videos")
+    .populate("owner", "-password -refreshToken -watchHistory -lastPasswordChange")
+    .lean();
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: playlists,
-    message: "Playlists found successfully",
+    message: playlists?.length > 0 ? "Playlists found successfully" : "No playlists found",
+    meta,
   });
 });
 
@@ -34,23 +37,22 @@ const getPlayListById = catchAsync(async (req, res) => {
 
 const getAllPlaylistByUserId = catchAsync(async (req, res) => {
   if (!req.params.id) throw new Error("User id is required");
+  const totalPlaylists = await PlayList.countDocuments({ owner: req.params.id });
+  const { limit, skip, meta } = paginationHelpers(req, totalPlaylists);
   const playlists = await PlayList.find({ owner: req.params.id })
     .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
     .populate("videos")
-    .populate("owner", "-password -refreshToken -watchHistory")
-    .exec();
-  if (!playlists || playlists.length === 0)
-    return sendApiResponse({
-      res,
-      statusCode: StatusCode.OK,
-      data: [],
-      message: "No playlists found",
-    });
+    .populate("owner", "-password -refreshToken -watchHistory -lastPasswordChange")
+    .lean();
+
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: playlists,
-    message: "Playlists found successfully",
+    message: playlists?.length > 0 ? "Playlists found successfully" : "No playlists found",
+    meta,
   });
 });
 

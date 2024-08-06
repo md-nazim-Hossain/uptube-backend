@@ -3,17 +3,22 @@ import { Subscription } from "../models/subscriptions.model.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import StatusCode from "http-status-codes";
+import { paginationHelpers } from "../utils/paginationHelpers.js";
 
 const getAllSubscribedChannel = catchAsync(async (req, res) => {
-  const subscriptions = await Subscription.find({ subscriber: req.user._id }).populate(
-    "channel",
-    "-password -refreshToken -watchHistory"
-  );
+  const totalSubscriptions = await Subscription.countDocuments({ subscriber: req.user._id });
+  const { limit, skip, meta } = paginationHelpers(req, totalSubscriptions);
+  const subscriptions = await Subscription.find({ subscriber: req.user._id })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .populate("channel", "-password -refreshToken -watchHistory -lastPasswordChange");
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: subscriptions,
-    message: "Subscriptions found successfully",
+    data: subscriptions || [],
+    message: subscriptions?.length > 0 ? "Subscriptions found successfully" : "Subscriptions not found",
+    meta,
   });
 });
 
