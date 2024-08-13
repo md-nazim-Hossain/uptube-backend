@@ -486,10 +486,8 @@ const deleteVideo = catchAsync(async (req, res) => {
     session.startTransaction();
     const video = await Video.findByIdAndDelete(id, { session });
     if (!video) throw new ApiError(StatusCode.NOT_FOUND, "Video not found");
-    const comments = await Comment.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
-    if (!comments) throw new ApiError(StatusCode.BAD_REQUEST, "Failed to delete video comments");
-    const likes = await Like.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
-    if (!likes) throw new ApiError(StatusCode.BAD_REQUEST, "Failed to delete video likes");
+    await Comment.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
+    await Like.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
     await session.commitTransaction();
     await session.endSession();
     return sendApiResponse({
