@@ -33,7 +33,7 @@ const getAllUserTweets = catchAsync(async (req, res) => {
 });
 
 const getAllLatestTweets = catchAsync(async (req, res) => {
-  const date = new Date(new Date().getTime() - 10 * 24 * 60 * 60 * 1000);
+  const date = new Date(new Date().getTime() - 5 * 24 * 60 * 60 * 1000);
   const id = getUserIdFromToken(req);
   const totalLatestTweets = await Tweet.countDocuments({
     createdAt: { $gte: date },
@@ -97,6 +97,62 @@ const getAllLatestTweets = catchAsync(async (req, res) => {
     data: tweets,
     meta,
     message: tweets?.length > 0 ? "Tweets found successfully" : "No tweets found",
+  });
+});
+
+const getTweetById = catchAsync(async (req, res) => {
+  if (!req.params.id) throw new ApiError(StatusCode.BAD_REQUEST, "Tweet id is required");
+  const id = getUserIdFromToken(req);
+  const tweet = await Tweet.aggregate([
+    { $match: { _id: new mongoose.Types.ObjectId(req.params.id) } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "author",
+        foreignField: "_id",
+        as: "author",
+        pipeline: [
+          { $project: { password: 0, refreshToken: 0, watchHistory: 0, lastPasswordChange: 0 } },
+          { $lookup: { from: "subscriptions", localField: "_id", foreignField: "channel", as: "subscribers" } },
+          {
+            $addFields: {
+              subscribersCount: { $size: "$subscribers" },
+              isSubscribed: {
+                $cond: {
+                  if: { $in: [new mongoose.Types.ObjectId(id), "$subscribers.subscriber"] },
+                  then: true,
+                  else: false,
+                },
+              },
+            },
+          },
+          { $project: { subscribers: 0 } },
+        ],
+      },
+    },
+    { $lookup: { from: "likes", localField: "_id", foreignField: "tweet", as: "likes" } },
+    { $lookup: { from: "comments", localField: "_id", foreignField: "tweet", as: "comments" } },
+
+    {
+      $addFields: {
+        likes: { $size: "$likes" },
+        comments: { $size: "$comments" },
+        isLiked: {
+          $cond: { if: { $in: [new mongoose.Types.ObjectId(id), "$likes.likedBy"] }, then: true, else: false },
+        },
+
+        author: { $arrayElemAt: ["$author", 0] },
+      },
+    },
+  ]);
+
+  if (!tweet || tweet.length === 0) throw new ApiError(StatusCode.NOT_FOUND, "Tweet not found");
+
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: tweet[0],
+    message: "Tweet found successfully",
   });
 });
 
@@ -184,4 +240,5 @@ export const tweetsController = {
   createTweet,
   deleteTweet,
   updateTweet,
+  getTweetById,
 };

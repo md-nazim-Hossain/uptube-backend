@@ -18,19 +18,11 @@ const getAllCommnetsByContentId = catchAsync(async (req, res) => {
     .populate({ path: "replies", options: { sort: { createdAt: -1 } } })
     .lean();
 
-  if (!comments || comments.length === 0)
-    return sendApiResponse({
-      res,
-      statusCode: StatusCode.OK,
-      data: [],
-      message: "No comments found",
-    });
-
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: comments,
-    message: "Comments found successfully",
+    message: comments?.length > 0 ? "Comments found successfully" : "Comments not found",
   });
 });
 
