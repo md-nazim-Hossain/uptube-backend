@@ -1,6 +1,6 @@
 export const paginationHelpers = (req, totalDocument) => {
   const page = parseInt(req?.query?.pageParam || req?.query?.page) || 1;
-  const limit = parseInt(req?.query?.limit) || 4;
+  const limit = parseInt(req?.query?.limit) || 20;
   const skip = (page - 1) * limit;
   const type = req?.query?.type || "video";
   const sortBy = req?.query?.sortBy || "createdAt";

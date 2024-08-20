@@ -134,9 +134,6 @@ const registerUser = catchAsync(async (req, res) => {
   }
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
   const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
-  // if (!avatarLocalPath) {
-  //   throw new ApiError(StatusCode.BAD_REQUEST, "Avatar is required");
-  // }
 
   let avatar;
   if (avatarLocalPath) {
@@ -146,9 +143,7 @@ const registerUser = catchAsync(async (req, res) => {
   if (coverImageLocalPath) {
     coverImage = await uploadOnCloudinary(coverImageLocalPath);
   }
-  // if (!avatar) {
-  //   throw new ApiError(StatusCode.BAD_REQUEST, "Failed to upload images");
-  // }
+
   const user = await User.create({
     username: addPrefixInUserName?.toLowerCase(),
     email,
@@ -174,13 +169,13 @@ const registerUser = catchAsync(async (req, res) => {
     `<div>
       <h1>Welcome, ${fullName}</h1>
       <br/> </br>
-      <p>You are registered successfully on UpTube.Please verify your account for the going to be a part of UpTube.</p>
+      <p>You are registered successfully on UPTube.Please verify your account for the going to be a part of UPTube.</p>
       <p>Your verification code is: ${verifyCode}</p>
       <br/<br/>
       <p>Thank you.</p>
     </div>`
   );
-
+  console.log(error);
   if (error) {
     throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to send email.Please contact us our support team");
   }
