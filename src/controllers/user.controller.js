@@ -175,7 +175,6 @@ const registerUser = catchAsync(async (req, res) => {
       <p>Thank you.</p>
     </div>`
   );
-  console.log(error);
   if (error) {
     throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to send email.Please contact us our support team");
   }
@@ -794,7 +793,7 @@ const forgotPassword = catchAsync(async (req, res) => {
     expiresIn: "10m",
   });
   const resetPasswordLink = `${config.clientUrl}/reset-password?token=${token}`;
-  const { error, data } = await sendEmail(
+  const { error, info } = await sendEmail(
     email,
     "Reset Password",
     `<div>
@@ -806,7 +805,7 @@ const forgotPassword = catchAsync(async (req, res) => {
   }
   return sendApiResponse({
     res,
-    data: data,
+    data: info,
     message: "Password reset link sent successfully",
     statusCode: StatusCode.OK,
   });
