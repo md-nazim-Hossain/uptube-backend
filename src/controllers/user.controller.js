@@ -9,7 +9,6 @@ import { config } from "../config/index.js";
 import mongoose from "mongoose";
 import { getUserIdFromToken } from "../utils/jwt.js";
 import { sendEmail } from "../utils/send-email.js";
-import { redis } from "../utils/redis.js";
 import { paginationHelpers } from "../utils/paginationHelpers.js";
 import { Subscription } from "../models/subscriptions.model.js";
 
@@ -351,20 +350,10 @@ const refreshAccessToken = catchAsync(async (req, res) => {
 });
 
 const getCurrentUser = catchAsync(async (req, res) => {
-  const cachedData = await redis.get(`users-${req.user._id}`);
-  if (cachedData && cachedData._id) {
-    return sendApiResponse({
-      res,
-      data: cachedData,
-      message: "User fetched from caching successfully",
-      statusCode: StatusCode.OK,
-    });
-  }
   const user = await User.findById(req.user._id).select("-password -refreshToken -watchHistory -lastPasswordChange");
   if (!user) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
-  await redis.setEx(`users-${req.user._id}`, user);
   return sendApiResponse({
     res,
     data: user,
