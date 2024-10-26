@@ -2,11 +2,19 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { config } from "./config/index.js";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 const app = express();
 
 // =========== app configurations ============== //
 
-app.use(express.static("public"));
+// Get the current directory name
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// app.use(express.static("public"));
+app.use(express.static(join(__dirname, "..", "public")));
+
 app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
 app.use(express.json({ limit: config.constants.limit }));
 app.use(
