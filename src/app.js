@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // app.use(express.static("public"));
-app.use(express.static(join(__dirname, "..", "public")));
+app.use(express.static(join(__dirname, "..", "src/public")));
 
 app.use(express.urlencoded({ extended: true, limit: config.constants.limit }));
 app.use(express.json({ limit: config.constants.limit }));
