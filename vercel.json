@@ -16,8 +16,8 @@
       "dest": "/index.js"
     },
     {
-      "src": "/public(.*)",
-      "dest": "/src/public/$1"
+      "src": "public(.*)",
+      "dest": "public/$1"
     }
   ]
 }
