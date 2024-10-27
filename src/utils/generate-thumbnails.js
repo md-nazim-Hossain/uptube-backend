@@ -1,12 +1,8 @@
 import ffmpeg from "fluent-ffmpeg";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import ffmpegStatic from "ffmpeg-static"; // Import the ffmpeg-static package
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-ffmpeg.setFfprobePath(join(__dirname, "bin", "ffprobe"));
-ffmpeg.setFfmpegPath(join(__dirname, "bin", "ffmpeg"));
+// Use the ffmpeg-static path
+ffmpeg.setFfmpegPath(ffmpegStatic);
 
 export function generateThumbnails({ url }) {
   let filePath;
