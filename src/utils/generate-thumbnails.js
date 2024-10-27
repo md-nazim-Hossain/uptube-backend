@@ -1,7 +1,11 @@
 import ffmpeg from "fluent-ffmpeg";
-import path from "path";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
-ffmpeg.setFfmpegPath(path.join(__dirname, "bin", "ffmpeg"));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+ffmpeg.setFfmpegPath(join(__dirname, "bin", "ffmpeg"));
 ffmpeg.setFfprobePath("/usr/bin/ffprobe");
 export function generateThumbnails({ url }) {
   let filePath;
