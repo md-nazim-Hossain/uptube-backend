@@ -1,8 +1,10 @@
 import ffmpeg from "fluent-ffmpeg";
-import ffmpegStatic from "ffmpeg-static"; // Import the ffmpeg-static package
+import ffmpegStatic from "ffmpeg-static"; // For ffmpeg binary
+import ffprobeStatic from "ffprobe-static"; // For ffprobe binary
 
-// Use the ffmpeg-static path
+// Set the paths for ffmpeg and ffprobe
 ffmpeg.setFfmpegPath(ffmpegStatic);
+ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 export function generateThumbnails({ url }) {
   let filePath;

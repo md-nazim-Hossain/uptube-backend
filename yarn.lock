@@ -520,6 +520,11 @@ ffmpeg-static@^5.2.0:
     https-proxy-agent "^5.0.0"
     progress "^2.0.3"
 
+ffprobe-static@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.npmjs.org/ffprobe-static/-/ffprobe-static-3.1.0.tgz"
+  integrity sha512-Dvpa9uhVMOYivhHKWLGDoa512J751qN1WZAIO+Xw4L/mrUSPxS4DApzSUDbCFE/LUq2+xYnznEahTd63AqBSpA==
+
 fill-range@^7.0.1:
   version "7.0.1"
   resolved "https://registry.npmjs.org/fill-range/-/fill-range-7.0.1.tgz"
