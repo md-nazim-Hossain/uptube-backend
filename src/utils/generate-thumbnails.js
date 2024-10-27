@@ -5,8 +5,9 @@ import { dirname, join } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+ffmpeg.setFfprobePath(join(__dirname, "bin", "ffprobe"));
 ffmpeg.setFfmpegPath(join(__dirname, "bin", "ffmpeg"));
-ffmpeg.setFfprobePath("/usr/bin/ffprobe");
+
 export function generateThumbnails({ url }) {
   let filePath;
   return new Promise((resolve, reject) => {
