@@ -1,5 +1,5 @@
 import ffmpeg from "fluent-ffmpeg";
-const path = require("path");
+import path from "path";
 
 ffmpeg.setFfmpegPath(path.join(__dirname, "bin", "ffmpeg"));
 ffmpeg.setFfprobePath("/usr/bin/ffprobe");
