@@ -659,7 +659,6 @@ const updateUserAccountDetails = catchAsync(async (req, res) => {
   if (!user) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
-  await redis.setEx(`users-${req.user._id}`, user);
   return sendApiResponse({
     res,
     data: user,
