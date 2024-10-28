@@ -74,12 +74,16 @@ const userSchema = new Schema(
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, config.bcrypt.salt);
+  if (!config.bcrypt || !config.bcrypt.salt) {
+    throw new Error("Salt is not defined in the configuration");
+  }
+  this.password = this.password.trim();
+  this.password = await bcrypt.hash(this.password, parseInt(config.bcrypt.salt));
   next();
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
-  return await bcrypt.compare(password, this.password);
+  return await bcrypt.compare(password?.trim(), this.password);
 };
 
 userSchema.methods.generateAccessToken = function () {

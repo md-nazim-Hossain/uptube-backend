@@ -264,6 +264,7 @@ const loginUser = catchAsync(async (req, res) => {
   if (!findUser) {
     throw new ApiError(StatusCode.NOT_FOUND, "User not found");
   }
+
   if (!(await findUser.isPasswordCorrect(password))) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Invalid credentials");
   }
@@ -688,7 +689,6 @@ const updateUserAvatar = catchAsync(async (req, res) => {
       new: true,
     }
   ).select("-password -refreshToken -watchHistory -lastPasswordChange");
-  await redis.setEx(`users-${req.user._id}`, user);
 
   return sendApiResponse({
     res,
@@ -719,7 +719,6 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
       new: true,
     }
   ).select("-password -refreshToken -watchHistory -lastPasswordChange");
-  await redis.setEx(`users-${req.user._id}`, user);
 
   return sendApiResponse({
     res,
@@ -837,8 +836,6 @@ const deleteUserWatchHistory = catchAsync(async (req, res) => {
     { new: true }
   );
   if (!user) throw new ApiError(StatusCode.NOT_FOUND, "User not found");
-  // const cachedData = ((await redis.get(`history-${req.user._id}`)) ?? [])?.filter((h) => h._id !== req.params.id);
-  // await redis.setEx(`history-${req.user._id}`, cachedData);
   return sendApiResponse({
     res,
     data: null,

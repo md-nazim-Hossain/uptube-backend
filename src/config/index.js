@@ -16,7 +16,7 @@ export const config = {
     reset_password_token_expiry: "1h",
   },
   bcrypt: {
-    salt: +process.env.BCRYPT_SALT || 10,
+    salt: process.env.BCRYPT_SALT || 10,
   },
   cloudinary: {
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
