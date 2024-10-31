@@ -4,6 +4,7 @@ import { sendApiResponse } from "../utils/ApiResponse.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import StatusCode from "http-status-codes";
 import { paginationHelpers } from "../utils/paginationHelpers.js";
+import { Notification } from "../models/notification.model.js";
 
 const getAllSubscribedChannel = catchAsync(async (req, res) => {
   const totalSubscriptions = await Subscription.countDocuments({ subscriber: req.user._id });
@@ -37,6 +38,12 @@ const createSubscribeAndUnsubscribe = catchAsync(async (req, res) => {
         subscriber,
       }));
   if (!subscription) throw new Error(`Error ${state == "subscribe" ? "creating" : "delete"} subscription`);
+  await Notification.create({
+    recipient: channel,
+    sender: subscriber,
+    message: `${req.user.name} ${state == "subscribe" ? "subscribed" : "unsubscribed"} to your channel`,
+    type: state == "subscribe" ? "subscribe" : "unsubscribe",
+  });
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,

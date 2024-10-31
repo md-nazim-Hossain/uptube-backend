@@ -4,6 +4,7 @@ import { sendApiResponse } from "../utils/ApiResponse.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import StatusCode from "http-status-codes";
 import { paginationHelpers } from "../utils/paginationHelpers.js";
+import { Notification } from "../models/notification.model.js";
 
 const getUserLikeVideos = catchAsync(async (req, res) => {
   const likeVideoCount = await Like.countDocuments({
@@ -62,14 +63,25 @@ const getUserLikeVideos = catchAsync(async (req, res) => {
 });
 
 const likeDislike = catchAsync(async (req, res) => {
-  const { tweetId, videoId, state } = req.body;
-  if (!(videoId || tweetId)) throw new Error("Video id, tweet id is required");
+  const { tweetId, videoId, state, contentOwnerId } = req.body;
+  if (!(videoId || tweetId || contentOwnerId)) throw new Error("Video id, tweet id or content owner id is required");
   let likeDislikeObj = {};
   if (state === "like") likeDislikeObj.likedBy = new mongoose.Types.ObjectId(req.user._id);
   if (videoId) likeDislikeObj.video = new mongoose.Types.ObjectId(videoId);
   if (tweetId) likeDislikeObj.tweet = new mongoose.Types.ObjectId(tweetId);
+
   const like = await (state === "like" ? Like.create(likeDislikeObj) : Like.findOneAndDelete(likeDislikeObj));
+
   if (!like) throw new Error(`Error ${state == "like" ? "creating" : "delete"} a like`);
+  await Notification.create({
+    sender: new mongoose.Types.ObjectId(req.user._id),
+    recipient: new mongoose.Types.ObjectId(contentOwnerId),
+    message: `${req?.user?.fullName} ${state === "like" ? "liked your video" : "unliked your video"}`,
+    type: state === "like" ? "like" : "unlike",
+    video: videoId ? new mongoose.Types.ObjectId(videoId) : null,
+    tweet: tweetId ? new mongoose.Types.ObjectId(tweetId) : null,
+  });
+
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,

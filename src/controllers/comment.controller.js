@@ -4,6 +4,7 @@ import { sendApiResponse } from "../utils/ApiResponse.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
+import { Notification } from "../models/notification.model.js";
 
 const getAllCommnetsByContentId = catchAsync(async (req, res) => {
   const { id } = req.params;
@@ -37,10 +38,25 @@ const createComment = catchAsync(async (req, res) => {
   if (videoId) commentData.video = new mongoose.Types.ObjectId(videoId);
   if (tweetId) commentData.tweet = new mongoose.Types.ObjectId(tweetId);
   if (isReplay) commentData.parentComment = new mongoose.Types.ObjectId(commentId);
-  const newComment = await Comment.create(commentData);
+  const newComment = await Comment.create(commentData).populate([
+    { path: "video", select: "+owner" },
+    { path: "tweet", select: "+author" },
+  ]);
   if (!newComment) throw new ApiError(StatusCode.BAD_REQUEST, "Error creating a comment");
-  if (isReplay)
+  if (isReplay) {
     await Comment.findByIdAndUpdate(commentId, { $push: { replies: newComment._id } }, { new: true }).lean();
+  }
+  console.log(newComment);
+  // await Notification.create({
+  //   sender: new mongoose.Types.ObjectId(req.user._id),
+  //   recipient: newComment.video || newComment.tweet,
+  //   message: `${req.user.name} ${
+  //     isReplay ? "replied to your comment" : `commented on your ${videoId ? "video" : "tweet"}`
+  //   }`,
+  //   type: isReplay ? "reply" : "comment",
+  //   comment: newComment._id,
+  // });
+
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
@@ -65,6 +81,14 @@ const commentLikeDislike = catchAsync(async (req, res) => {
   }
   const comment = await Comment.findByIdAndUpdate(id, likeObj, { new: true });
   if (!comment) throw new ApiError(StatusCode.NOT_FOUND, "Comment not found");
+
+  await Notification.create({
+    sender: new mongoose.Types.ObjectId(req.user._id),
+    recipient: comment.owner?._id,
+    message: `${req.user.name} ${state === "like" ? "liked your comment" : "unliked your comment"}`,
+    type: state === "like" ? "like" : "unlike",
+    comment: comment._id,
+  });
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
