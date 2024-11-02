@@ -36,12 +36,10 @@ const notificationSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    isHide: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
+    isHide: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

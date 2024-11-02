@@ -9,6 +9,8 @@ import { paginationHelpers } from "../utils/paginationHelpers.js";
 import { getUserIdFromToken } from "../utils/jwt.js";
 import { Like } from "../models/like.model.js";
 import { Comment } from "../models/comment.model.js";
+import { Notification } from "../models/notification.model.js";
+import { createNotifications } from "../utils/notification.js";
 
 const getAllUserTweets = catchAsync(async (req, res) => {
   const tweets = await Tweet.aggregate([
@@ -178,12 +180,13 @@ const createTweet = catchAsync(async (req, res) => {
 
   if (!tweet) throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error creating tweet");
 
-  return sendApiResponse({
+  sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: tweet,
     message: "Tweet created successfully",
   });
+  await createNotifications(req.user._id, null, new mongoose.Types.ObjectId(tweet._id));
 });
 
 const updateTweet = catchAsync(async (req, res) => {
@@ -219,6 +222,7 @@ const deleteTweet = catchAsync(async (req, res) => {
     if (!tweet) throw new ApiError(StatusCode.NOT_FOUND, "Tweet not found");
     await Comment.deleteMany({ tweet: new mongoose.Types.ObjectId(id) }, { session });
     await Like.deleteMany({ tweet: new mongoose.Types.ObjectId(id) }, { session });
+    await Notification.deleteMany({ tweet: new mongoose.Types.ObjectId(id) }, { session });
     await session.commitTransaction();
     await session.endSession();
     return sendApiResponse({

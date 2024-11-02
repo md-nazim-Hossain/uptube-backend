@@ -38,12 +38,14 @@ const createSubscribeAndUnsubscribe = catchAsync(async (req, res) => {
         subscriber,
       }));
   if (!subscription) throw new Error(`Error ${state == "subscribe" ? "creating" : "delete"} subscription`);
-  await Notification.create({
-    recipient: channel,
-    sender: subscriber,
-    message: `${req.user.name} ${state == "subscribe" ? "subscribed" : "unsubscribed"} to your channel`,
-    type: state == "subscribe" ? "subscribe" : "unsubscribe",
-  });
+  if (channelId.toString() !== req?.user?._id.toString()) {
+    await Notification.create({
+      recipient: channel,
+      sender: subscriber,
+      message: `${req.user.name} ${state == "subscribe" ? "subscribed" : "unsubscribed"} to your channel`,
+      type: state == "subscribe" ? "subscribe" : "unsubscribe",
+    });
+  }
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,

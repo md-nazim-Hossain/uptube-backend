@@ -10,6 +10,8 @@ import { Comment } from "../models/comment.model.js";
 import { Like } from "../models/like.model.js";
 import { generateThumbnails } from "../utils/generate-thumbnails.js";
 import { paginationHelpers } from "../utils/paginationHelpers.js";
+import { Notification } from "../models/notification.model.js";
+import { createNotifications } from "../utils/notification.js";
 
 const getAllContentsByType = catchAsync(async (req, res) => {
   const type = req.query.type || "video";
@@ -420,12 +422,13 @@ const uploadVideo = catchAsync(async (req, res) => {
     throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error save to uploading video into db");
   }
 
-  return sendApiResponse({
+  sendApiResponse({
     res,
     statusCode: StatusCode.OK,
     data: uploadVideos,
     message: "Video uploaded successfully",
   });
+  await createNotifications(req.user._id, new mongoose.Types.ObjectId(uploadVideos._id), null);
 });
 
 const updateVideo = catchAsync(async (req, res) => {
@@ -488,6 +491,7 @@ const deleteVideo = catchAsync(async (req, res) => {
     if (!video) throw new ApiError(StatusCode.NOT_FOUND, "Video not found");
     await Comment.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
     await Like.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
+    await Notification.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
     await session.commitTransaction();
     await session.endSession();
     return sendApiResponse({

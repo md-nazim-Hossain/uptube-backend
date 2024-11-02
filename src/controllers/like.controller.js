@@ -73,14 +73,16 @@ const likeDislike = catchAsync(async (req, res) => {
   const like = await (state === "like" ? Like.create(likeDislikeObj) : Like.findOneAndDelete(likeDislikeObj));
 
   if (!like) throw new Error(`Error ${state == "like" ? "creating" : "delete"} a like`);
-  await Notification.create({
-    sender: new mongoose.Types.ObjectId(req.user._id),
-    recipient: new mongoose.Types.ObjectId(contentOwnerId),
-    message: `${req?.user?.fullName} ${state === "like" ? "liked your video" : "unliked your video"}`,
-    type: state === "like" ? "like" : "unlike",
-    video: videoId ? new mongoose.Types.ObjectId(videoId) : null,
-    tweet: tweetId ? new mongoose.Types.ObjectId(tweetId) : null,
-  });
+  if (contentOwnerId.toString() !== req?.user?._id.toString()) {
+    await Notification.create({
+      sender: new mongoose.Types.ObjectId(req.user._id),
+      recipient: new mongoose.Types.ObjectId(contentOwnerId),
+      message: `${req?.user?.fullName} ${state === "like" ? "liked your video" : "unliked your video"}`,
+      type: state === "like" ? "like" : "unlike",
+      video: videoId ? new mongoose.Types.ObjectId(videoId) : null,
+      tweet: tweetId ? new mongoose.Types.ObjectId(tweetId) : null,
+    });
+  }
 
   return sendApiResponse({
     res,
