@@ -3,9 +3,10 @@ import { paginationHelpers } from "../utils/paginationHelpers.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
 import ApiError from "../utils/ApiError.js";
 import StatusCode from "http-status-codes";
+import mongoose from "mongoose";
 
 const getAllUserNotifications = async (req, res) => {
-  const totalContent = await Notification.countDocuments({ isPublished: true, type });
+  const totalContent = await Notification.countDocuments({ recipient: new mongoose.Types.ObjectId(req.user._id) });
   const { limit, meta, skip, sortBy, sortOrder } = paginationHelpers(req, totalContent);
   const notifications = await Notification.find({ recipient: req.user._id })
     .populate([
