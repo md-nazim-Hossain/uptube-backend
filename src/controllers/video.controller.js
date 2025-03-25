@@ -507,6 +507,45 @@ const deleteVideo = catchAsync(async (req, res) => {
   }
 });
 
+const attachAdsInVideo = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { ads } = req.body;
+  if (!ads.length) throw new ApiError(StatusCode.BAD_REQUEST, "Ads is required");
+  const video = await Video.findById(id);
+  if (!video) throw new ApiError(StatusCode.NOT_FOUND, "Video not found");
+
+  const existingAds = new Set(video.ads.map(String));
+  const duplicateAds = ads.filter((ad) => existingAds.has(String(ad)));
+  if (duplicateAds.length > 0) {
+    throw new ApiError(StatusCode.BAD_REQUEST, `Ads already exist in the video: ${duplicateAds.join(", ")}`);
+  }
+
+  video.ads = [...ads, ...video.ads];
+  await video.save();
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: video,
+    message: "Video updated successfully",
+  });
+});
+
+const detachAdsInVideo = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { ads } = req.body;
+  if (!ads.length) throw new ApiError(StatusCode.BAD_REQUEST, "Ads is required");
+  const video = await Video.findById(id);
+  if (!video) throw new ApiError(StatusCode.NOT_FOUND, "Video not found");
+  video.ads = video.ads.filter((ad) => !ads.includes(ad));
+  await video.save();
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: video,
+    message: "Video updated successfully",
+  });
+});
+
 export const videoController = {
   uploadVideo,
   deleteVideo,
@@ -521,4 +560,6 @@ export const videoController = {
   updateViewCount,
   getAllTrandingContent,
   getAllContentByHashTag,
+  attachAdsInVideo,
+  detachAdsInVideo,
 };
