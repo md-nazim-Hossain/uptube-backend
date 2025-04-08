@@ -1,6 +1,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegStatic from "ffmpeg-static"; // For ffmpeg binary
 import ffprobeStatic from "ffprobe-static"; // For ffprobe binary
+import logger from "./logger.js";
 
 // Set the paths for ffmpeg and ffprobe
 ffmpeg.setFfmpegPath(ffmpegStatic);
@@ -11,18 +12,16 @@ export function generateThumbnails({ url }) {
   return new Promise((resolve, reject) => {
     return ffmpeg(url)
       .on("filenames", (filenames) => {
-        console.log("Will generate", filenames.join(", "));
         filePath = `public/thumbnails/${filenames[0]}`;
       })
       .on("end", () => {
-        console.log("Screenshots taken");
         resolve({
           success: true,
           url: filePath,
         });
       })
       .on("error", (err) => {
-        console.log(err);
+        logger.error(err);
         reject({ success: false, err });
       })
       .screenshots({

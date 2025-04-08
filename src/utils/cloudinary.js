@@ -1,6 +1,7 @@
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
 import { config } from "../config/index.js";
+import logger from "./logger.js";
 
 cloudinary.config({
   cloud_name: config.cloudinary.cloud_name,
@@ -18,7 +19,7 @@ const uploadOnCloudinary = async (localFilePath) => {
     fs.unlinkSync(localFilePath);
     return response;
   } catch (error) {
-    console.log("Error uploading file to cloudinary", error);
+    logger.error("Error uploading file to cloudinary", error);
     fs.unlinkSync(localFilePath);
     return null;
   }

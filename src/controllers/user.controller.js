@@ -11,6 +11,7 @@ import { getUserIdFromToken } from "../utils/jwt.js";
 import { sendEmail } from "../utils/send-email.js";
 import { paginationHelpers } from "../utils/paginationHelpers.js";
 import { Subscription } from "../models/subscriptions.model.js";
+import logger from "../utils/logger.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -21,6 +22,7 @@ const generateAccessAndRefreshToken = async (userId) => {
     await user.save({ validateBeforeSave: false });
     return { accessToken, refreshToken };
   } catch (error) {
+    logger.error(error);
     throw new ApiError(
       StatusCode.INTERNAL_SERVER_ERROR,
       "Something went wrong,when generating access and refresh token"
