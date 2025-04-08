@@ -21,7 +21,7 @@ const logger = winston.createLogger({
       zippedArchive: true,
       maxSize: "20m",
       maxFiles: "14d",
-      dirname: "src/logs",
+      dirname: "logs",
     }),
   ],
 });
