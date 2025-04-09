@@ -7,9 +7,9 @@ import { paginationHelpers } from "../utils/paginationHelpers.js";
 
 const getAllPlaylists = catchAsync(async (req, res) => {
   const totalPlaylists = await PlayList.countDocuments({ isPublished: true });
-  const { limit, skip, meta } = paginationHelpers(req, totalPlaylists);
+  const { limit, skip, meta, sortBy, sortOrder } = paginationHelpers(req, totalPlaylists);
   const playlists = await PlayList.find({ isPublished: true })
-    .sort({ createdAt: -1 })
+    .sort({ [sortBy]: sortOrder })
     .skip(skip)
     .limit(limit)
     .populate("videos")
@@ -38,9 +38,9 @@ const getPlayListById = catchAsync(async (req, res) => {
 const getAllPlaylistByUserId = catchAsync(async (req, res) => {
   if (!req.params.id) throw new Error("User id is required");
   const totalPlaylists = await PlayList.countDocuments({ owner: req.params.id });
-  const { limit, skip, meta } = paginationHelpers(req, totalPlaylists);
+  const { limit, skip, meta, sortBy, sortOrder } = paginationHelpers(req, totalPlaylists);
   const playlists = await PlayList.find({ owner: req.params.id })
-    .sort({ createdAt: -1 })
+    .sort({ [sortBy]: sortOrder })
     .skip(skip)
     .limit(limit)
     .populate("videos")

@@ -266,10 +266,14 @@ const getVideoByUserId = catchAsync(async (req, res) => {
 const getAllUserContentByType = catchAsync(async (req, res) => {
   const type = req.query.type || "video";
   const userId = new mongoose.Types.ObjectId(req.user._id);
+  const totalContent = await Video.countDocuments({ isPublished: true, type, owner: userId });
+  const { limit, meta, skip, sortBy, sortOrder } = paginationHelpers(req, totalContent);
   const videos = await Video.aggregate([
     { $match: { owner: userId, type } },
 
-    { $sort: { createdAt: -1 } },
+    { $sort: { [sortBy]: sortOrder === "asc" ? 1 : -1 } },
+    { $skip: skip },
+    { $limit: limit },
     { $lookup: { from: "comments", localField: "_id", foreignField: "video", as: "comments" } },
     { $lookup: { from: "likes", localField: "_id", foreignField: "video", as: "likes" } },
     { $lookup: { from: "playlists", localField: "_id", foreignField: "videos", as: "playlists" } },
@@ -295,6 +299,7 @@ const getAllUserContentByType = catchAsync(async (req, res) => {
     statusCode: StatusCode.OK,
     data: videos,
     message: "Videos found successfully",
+    meta,
   });
 });
 

@@ -13,8 +13,12 @@ import { Notification } from "../models/notification.model.js";
 import { createNotifications } from "../utils/notification.js";
 
 const getAllUserTweets = catchAsync(async (req, res) => {
+  const userId = new mongoose.Types.ObjectId(req.user._id);
+  const totalTweets = await Tweet.countDocuments({ author: userId });
+  const { limit, skip, meta, sortBy, sortOrder } = paginationHelpers(req, totalTweets);
+
   const tweets = await Tweet.aggregate([
-    { $match: { author: new mongoose.Types.ObjectId(req.user._id) } },
+    { $match: { author: userId } },
     { $lookup: { from: "likes", localField: "_id", foreignField: "tweet", as: "likes" } },
     { $lookup: { from: "comments", localField: "_id", foreignField: "tweet", as: "comments" } },
     {
@@ -23,7 +27,9 @@ const getAllUserTweets = catchAsync(async (req, res) => {
         comments: { $size: "$comments" },
       },
     },
-    { $sort: { createdAt: -1 } },
+    { $sort: { [sortBy]: sortOrder === "asc" ? 1 : -1 } },
+    { $skip: skip },
+    { $limit: limit },
   ]);
 
   return sendApiResponse({
@@ -31,11 +37,12 @@ const getAllUserTweets = catchAsync(async (req, res) => {
     statusCode: StatusCode.OK,
     data: tweets,
     message: tweets?.length > 0 ? "Tweets found successfully" : "No tweets found",
+    meta,
   });
 });
 
 const getAllLatestTweets = catchAsync(async (req, res) => {
-  const date = new Date(new Date().getTime() - 5 * 24 * 60 * 60 * 1000);
+  const date = new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000);
   const id = getUserIdFromToken(req);
   const totalLatestTweets = await Tweet.countDocuments({
     createdAt: { $gte: date },

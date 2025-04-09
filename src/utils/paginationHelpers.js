@@ -8,9 +8,11 @@ export const paginationHelpers = (req, totalDocument) => {
   const queryId = req?.query?.id || req?.query?._id || null;
   const meta = {
     previousId: page > 1 ? page - 1 : null,
-    nextId: skip < totalDocument ? page + 1 : null,
+    nextId: page * limit < totalDocument ? page + 1 : null,
     currentId: page,
     total: totalDocument,
+    limit,
+    totalPage: Math.ceil(totalDocument / limit),
   };
   return { page, limit, skip, type, sortBy, sortOrder, meta, queryId };
 };
