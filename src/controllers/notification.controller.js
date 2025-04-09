@@ -12,7 +12,7 @@ const getAllUserNotifications = async (req, res) => {
     isRead: false,
   });
   const { limit, meta, skip, sortBy, sortOrder } = paginationHelpers(req, totalContent);
-  const notifications = await Notification.find({ recipient: req.user._id })
+  const notifications = await Notification.find({ recipient: req.user._id, isHide: false })
     .populate([
       { path: "sender", select: "fullName avatar _id username" },
       { path: "videoId", select: "title thumbnail _id type" },
