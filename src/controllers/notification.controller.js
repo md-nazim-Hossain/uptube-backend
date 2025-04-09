@@ -7,6 +7,10 @@ import mongoose from "mongoose";
 
 const getAllUserNotifications = async (req, res) => {
   const totalContent = await Notification.countDocuments({ recipient: new mongoose.Types.ObjectId(req.user._id) });
+  const totalUnread = await Notification.countDocuments({
+    recipient: new mongoose.Types.ObjectId(req.user._id),
+    isRead: false,
+  });
   const { limit, meta, skip, sortBy, sortOrder } = paginationHelpers(req, totalContent);
   const notifications = await Notification.find({ recipient: req.user._id })
     .populate([
@@ -30,7 +34,7 @@ const getAllUserNotifications = async (req, res) => {
   return sendApiResponse({
     res,
     statusCode: StatusCode.OK,
-    data: notifications || [],
+    data: { notifications: notifications || [], totalUnread },
     message: notifications?.length > 0 ? "Notifications found successfully" : "Notifications not found",
     meta,
   });
@@ -59,6 +63,29 @@ export const hideNotification = async (req, res) => {
   });
 };
 
+export const readNotification = async (req, res) => {
+  const { id } = req.params;
+  const notification = await Notification.findById(id);
+  if (!notification) throw new ApiError("Notification not found");
+  if (notification.isRead) {
+    return sendApiResponse({
+      res,
+      statusCode: StatusCode.OK,
+      data: notification,
+      message: "Notification already read",
+    });
+  }
+
+  notification.isRead = true;
+  await notification.save();
+  return sendApiResponse({
+    res,
+    statusCode: StatusCode.OK,
+    data: notification,
+    message: "Notification read successfully",
+  });
+};
+
 const deleteNotification = async (req, res) => {
   const { id } = req.params;
   const notification = await Notification.findByIdAndDelete(id);
@@ -71,4 +98,9 @@ const deleteNotification = async (req, res) => {
   });
 };
 
-export const notificationController = { getAllUserNotifications, hideNotification, deleteNotification };
+export const notificationController = {
+  getAllUserNotifications,
+  hideNotification,
+  deleteNotification,
+  readNotification,
+};
