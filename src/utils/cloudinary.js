@@ -25,4 +25,38 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-export { uploadOnCloudinary };
+const deleteOnCloudinary = async (url, resource_type = "video") => {
+  try {
+    if (!url) throw new Error("url is required");
+    const publicId = getPublicIdFromUrl(url);
+    if (!publicId || typeof publicId !== "string") {
+      throw new Error("Invalid publicId: must be a non-empty string");
+    }
+
+    const response = await cloudinary.uploader.destroy(publicId, {
+      invalidate: true,
+      resource_type,
+    });
+
+    if (response.result !== "ok") {
+      throw new Error(`Cloudinary deletion failed: ${response.result}`);
+    }
+
+    return { ...response, success: true };
+  } catch (error) {
+    logger.error(`Failed to delete Cloudinary asset ${publicId}:`, error.message);
+    return {
+      suceess: false,
+      error: error.message || "Failed to delete Cloudinary asset",
+    };
+  }
+};
+
+const getPublicIdFromUrl = (url) => {
+  return url
+    .split("/upload/")[1]
+    .split(".")[0]
+    ?.replace(/^v\d+\//, "");
+};
+
+export { uploadOnCloudinary, deleteOnCloudinary };

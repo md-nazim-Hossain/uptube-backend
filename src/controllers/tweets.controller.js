@@ -199,8 +199,8 @@ const createTweet = catchAsync(async (req, res) => {
 const updateTweet = catchAsync(async (req, res) => {
   const { content } = req.body;
   const thumbnailFilesLocalPath = req.file?.path;
-  if (!content && !thumbnailFilesLocalPath)
-    throw new ApiError(StatusCode.BAD_REQUEST, "Content or thumbnail is required");
+  if (!content) throw new ApiError(StatusCode.BAD_REQUEST, "Content is required");
+
   if (thumbnailFilesLocalPath) {
     const uploadThumbnail = await uploadOnCloudinary(thumbnailFilesLocalPath);
     if (!uploadThumbnail) {
@@ -230,8 +230,11 @@ const deleteTweet = catchAsync(async (req, res) => {
     await Comment.deleteMany({ tweet: new mongoose.Types.ObjectId(id) }, { session });
     await Like.deleteMany({ tweet: new mongoose.Types.ObjectId(id) }, { session });
     await Notification.deleteMany({ tweet: new mongoose.Types.ObjectId(id) }, { session });
+    const deleteImage = await deleteOnCloudinary(tweet.thumbnail, "image");
+    if (!deleteImage?.success) {
+      throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error deleting image from Cloudinary");
+    }
     await session.commitTransaction();
-    await session.endSession();
     return sendApiResponse({
       res,
       statusCode: StatusCode.OK,
@@ -240,8 +243,9 @@ const deleteTweet = catchAsync(async (req, res) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    await session.endSession();
     throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error deleting tweet");
+  } finally {
+    await session.endSession();
   }
 });
 

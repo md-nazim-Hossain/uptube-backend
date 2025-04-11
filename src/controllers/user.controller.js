@@ -1,7 +1,7 @@
 import ApiError from "../utils/ApiError.js";
 import { catchAsync } from "../utils/catchAsync.js";
 import StatusCode from "http-status-codes";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { User } from "../models/user.model.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
@@ -680,6 +680,13 @@ const updateUserAvatar = catchAsync(async (req, res) => {
   if (!avatar?.url) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Failed to upload profile picture");
   }
+
+  if (req?.user?.avatar) {
+    const deletePreviousAvatar = await deleteOnCloudinary(req.user?.avatar, "image");
+    if (!deletePreviousAvatar.success) {
+      throw new ApiError(StatusCode.BAD_REQUEST, "Failed to delete previous cover image");
+    }
+  }
   const user = await User.findByIdAndUpdate(
     req.user._id,
     {
@@ -709,6 +716,13 @@ const updateUserCoverImage = catchAsync(async (req, res) => {
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
   if (!coverImage?.url) {
     throw new ApiError(StatusCode.BAD_REQUEST, "Failed to upload profile picture");
+  }
+
+  if (req?.user?.coverImage) {
+    const deletePreviousCoverImage = await deleteOnCloudinary(req.user?.coverImage, "image");
+    if (!deletePreviousCoverImage.success) {
+      throw new ApiError(StatusCode.BAD_REQUEST, "Failed to delete previous cover image");
+    }
   }
   const user = await User.findByIdAndUpdate(
     req.user._id,

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { Video } from "../models/video.model.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
 import { catchAsync } from "../utils/catchAsync.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteOnCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import StatusCode from "http-status-codes";
 import ApiError from "../utils/ApiError.js";
 import { getUserIdFromToken } from "../utils/jwt.js";
@@ -12,6 +12,7 @@ import { generateThumbnails } from "../utils/generate-thumbnails.js";
 import { paginationHelpers } from "../utils/paginationHelpers.js";
 import { Notification } from "../models/notification.model.js";
 import { createNotifications } from "../utils/notification.js";
+import logger from "../utils/logger.js";
 
 const getAllContentsByType = catchAsync(async (req, res) => {
   const type = req.query.type || "video";
@@ -453,6 +454,11 @@ const updateVideo = catchAsync(async (req, res) => {
       throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading files to cloudinary");
     }
     req.body.thumbnail = thumbnail.url;
+
+    const deletePreviousThumbnail = await deleteOnCloudinary(thumbnail, "image");
+    if (!deletePreviousThumbnail.success) {
+      throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error deleting thumbnail from Cloudinary");
+    }
   }
 
   const video = await Video.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -494,11 +500,25 @@ const deleteVideo = catchAsync(async (req, res) => {
     session.startTransaction();
     const video = await Video.findByIdAndDelete(id, { session });
     if (!video) throw new ApiError(StatusCode.NOT_FOUND, "Video not found");
+
+    const otherVideosUsingSameFile = await Video.countDocuments({
+      videoFile: video.videoFile,
+      _id: { $ne: id },
+    }).session(session);
+
     await Comment.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
     await Like.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
     await Notification.deleteMany({ video: new mongoose.Types.ObjectId(id) }, { session });
+
+    if (!otherVideosUsingSameFile) {
+      const cloudinaryResult = await deleteOnCloudinary(video.videoFile, "video");
+      const deleteThumbnail = await deleteOnCloudinary(video.thumbnail, "image");
+      if (!deleteThumbnail?.success || !cloudinaryResult?.success) {
+        throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error deleting video or thumbnail from Cloudinary");
+      }
+    }
+
     await session.commitTransaction();
-    await session.endSession();
     return sendApiResponse({
       res,
       statusCode: StatusCode.OK,
@@ -507,8 +527,10 @@ const deleteVideo = catchAsync(async (req, res) => {
     });
   } catch (error) {
     await session.abortTransaction();
-    await session.endSession();
+    logger.error("Error deleting video:", error?.message);
     throw error;
+  } finally {
+    await session.endSession();
   }
 });
 
