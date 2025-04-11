@@ -79,8 +79,8 @@ const likeDislike = catchAsync(async (req, res) => {
       recipient: new mongoose.Types.ObjectId(contentOwnerId),
       message: `${req?.user?.fullName} ${state === "like" ? "liked your video" : "unliked your video"}`,
       type: state === "like" ? "like" : "unlike",
-      video: videoId ? new mongoose.Types.ObjectId(videoId) : null,
-      tweet: tweetId ? new mongoose.Types.ObjectId(tweetId) : null,
+      videoId: videoId ? new mongoose.Types.ObjectId(videoId) : null,
+      tweetId: tweetId ? new mongoose.Types.ObjectId(tweetId) : null,
     });
   }
 
