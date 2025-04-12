@@ -18,7 +18,6 @@ export const sendEmail = async (receiver, subject, text) => {
     to: receiver, // list of receivers
     subject: subject, // Subject line
     html: `<section>
-         <h1>${subject}</h1>
          ${text}
       </section>`, // html body
   };
