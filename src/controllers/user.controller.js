@@ -167,15 +167,31 @@ const registerUser = catchAsync(async (req, res) => {
   const { error } = await sendEmail(
     email,
     "Verify your account",
-    `<div>
-      <h1>Welcome, ${fullName}</h1>
-      <br/> </br>
-      <p>You are registered successfully on UPTube.Please verify your account for the going to be a part of UPTube.</p>
-      <p>Your verification code is: ${verifyCode}</p>
-      <br/<br/>
-      <p>Thank you.</p>
-    </div>`
+    `
+  <div style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 30px;">
+    <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      <h2 style="color: #333;">Welcome, ${fullName} 👋</h2>
+      <p style="font-size: 16px; color: #555;">
+        You have successfully registered on <strong>UPTube</strong>. We're excited to have you on board!
+      </p>
+      <p style="font-size: 16px; color: #555;">
+        Please verify your account to get started:
+      </p>
+      <div style="background-color: #f0f0f0; padding: 15px; margin: 20px 0; text-align: center; border-radius: 5px;">
+        <span style="font-size: 20px; font-weight: bold; color: #333;">${verifyCode}</span>
+      </div>
+      <p style="font-size: 16px; color: #555;">
+        If you didn’t request this, you can safely ignore this email.
+      </p>
+      <p style="font-size: 16px; color: #555;">
+        Thanks again, <br />
+        <strong>The UPTube Team</strong>
+      </p>
+    </div>
+  </div>
+  `
   );
+
   if (error) {
     throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Failed to send email.Please contact us our support team");
   }
@@ -798,9 +814,28 @@ const forgotPassword = catchAsync(async (req, res) => {
   const resetPasswordLink = `${config.clientUrl}/reset-password?token=${token}`;
   const { error, info } = await sendEmail(
     email,
-    "Reset Password",
-    `<div>
-    Click here to reset your password: <a target="_blank" href="${resetPasswordLink}">Reset Password</a></div>`
+    "Reset Your Password",
+    `<div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 30px;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+      <h2 style="color: #333;">Reset Your Password</h2>
+      <p style="font-size: 16px; color: #555;">
+        We received a request to reset your password for your <strong>UPTube</strong> account. Click the button below to proceed.
+      </p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${resetPasswordLink}" target="_blank" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 5px; font-size: 16px; display: inline-block;">
+          Reset Password
+        </a>
+      </div>
+      <p style="font-size: 14px; color: #999;">
+        If you did not request this password reset, please ignore this email or contact support.
+      </p>
+      <p style="font-size: 16px; color: #555; margin-top: 30px;">
+        Thanks,<br />
+        <strong>The UPTube Team</strong>
+      </p>
+    </div>
+  </div>
+  `
   );
 
   if (error) {
