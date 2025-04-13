@@ -17,7 +17,7 @@ const uploadOnCloudinary = async (localFilePath) => {
       folder: "uptube",
     });
     fs.unlinkSync(localFilePath);
-    return response;
+    return { ...response, url: removeCloudNameFromUrl(response.url) };
   } catch (error) {
     logger.error("Error uploading file to cloudinary", error);
     fs.unlinkSync(localFilePath);
@@ -57,6 +57,10 @@ const getPublicIdFromUrl = (url) => {
     .split("/upload/")[1]
     .split(".")[0]
     ?.replace(/^v\d+\//, "");
+};
+
+const removeCloudNameFromUrl = (url) => {
+  return url?.replace(`http://res.cloudinary.com/${config.cloudinary.cloud_name}`, "");
 };
 
 export { uploadOnCloudinary, deleteOnCloudinary };
