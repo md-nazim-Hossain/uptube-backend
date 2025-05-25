@@ -1,3 +1,5 @@
+import crypto from "crypto";
+import fs from "fs";
 import mongoose from "mongoose";
 import { Video } from "../models/video.model.js";
 import { sendApiResponse } from "../utils/ApiResponse.js";
@@ -392,6 +394,30 @@ const uploadVideo = catchAsync(async (req, res) => {
     throw new ApiError(StatusCode.BAD_REQUEST, "Video file are required");
   }
 
+  // Generate SHA256 Hash
+  const generatedHash = await new Promise((resolve, reject) => {
+    const hash = crypto.createHash("sha256");
+    const stream = fs.createReadStream(videoFilesLocalPath);
+    stream.on("data", (data) => hash.update(data));
+    stream.on("end", () => resolve(hash.digest("hex")));
+    stream.on("error", (error) => reject(error));
+  });
+
+  // Check for Duplicates in Database
+  const existingVideo = await Video.findOne({ videoHash: generatedHash });
+
+  if (existingVideo) {
+    // Delete the temporary local video file
+    if (fs.existsSync(videoFilesLocalPath)) {
+      fs.unlinkSync(videoFilesLocalPath);
+    }
+    // also delete thumbnail if it exists
+    if (thumbnailFilesLocalPath && fs.existsSync(thumbnailFilesLocalPath)) {
+        fs.unlinkSync(thumbnailFilesLocalPath);
+    }
+    throw new ApiError(StatusCode.CONFLICT, "This video already exists.");
+  }
+
   let thumbnail;
   if (type === "video") {
     if (thumbnailFilesLocalPath) {
@@ -409,7 +435,11 @@ const uploadVideo = catchAsync(async (req, res) => {
 
   const videoFiles = await uploadOnCloudinary(videoFilesLocalPath);
   if (!videoFiles) {
-    throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading files to cloudinary");
+    // If Cloudinary upload fails, and a thumbnail was uploaded, attempt to delete it.
+    if (thumbnail && thumbnail.public_id) {
+        await deleteOnCloudinary(thumbnail.public_id, "image");
+    }
+    throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error uploading video file to cloudinary");
   }
   const { url, duration } = videoFiles;
 
@@ -417,6 +447,7 @@ const uploadVideo = catchAsync(async (req, res) => {
     description,
     title,
     videoFile: url,
+    videoHash: generatedHash, // Add the generated hash
     thumbnail: thumbnail?.url || null,
     duration,
     isPublished,
@@ -425,6 +456,13 @@ const uploadVideo = catchAsync(async (req, res) => {
   });
 
   if (!uploadVideos) {
+    // If saving to DB fails, attempt to delete video and thumbnail from Cloudinary
+    if (videoFiles && videoFiles.public_id) {
+        await deleteOnCloudinary(videoFiles.public_id, "video");
+    }
+    if (thumbnail && thumbnail.public_id) {
+        await deleteOnCloudinary(thumbnail.public_id, "image");
+    }
     throw new ApiError(StatusCode.INTERNAL_SERVER_ERROR, "Error save to uploading video into db");
   }
 

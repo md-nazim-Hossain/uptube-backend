@@ -14,6 +14,10 @@ const videoSchema = new Schema(
       type: String,
       required: true,
     },
+    videoHash: {
+      type: String,
+      index: true,
+    },
     thumbnail: {
       type: String,
     },
